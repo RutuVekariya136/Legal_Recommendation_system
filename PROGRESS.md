@@ -16,7 +16,7 @@
 [✓] 12. Hybrid Similarity       (hybrid_similarity.py: weighted-sum + learned/NN-Map-style combiner; build_hybrid.py; CV Spearman 0.75 val; 128 tests)
 [✓] 13. Recommendation Engine   (recommendation.py: Top-K for case/uploaded-text + filters + rationale; recommend.py; medical-negligence line surfaces; 137 tests)
 [✓] 14. Explainability          (explainability.py: SimilarityExplanation + contribution attribution + labelled shared statutes/citations; explain.py; 144 tests)
-[ ] 17. Database
+[✓] 17. Database                (config.py + database.py + models/ + repository.py + init_db.py; 295 cases loaded; 151 tests)
 [ ] 18. FastAPI Backend
 [ ] 20. Search
 [ ] 21. Upload Workflow

@@ -373,3 +373,26 @@
 - `tests/test_explainability.py` — 7 tests (weighted contributions sum to score, learned
   intercept term, pair labels from hierarchy, JSON-safety, weak vs strong summary, upload
   path, real corpus finds the shared English authorities). Suite: 144 pass.
+
+## Step 17 — Database
+- `backend/app/config.py` — `Settings` (pydantic-settings) from `backend/.env`: DB URL, data
+  dirs, model/hybrid defaults, CORS, upload cap. `database_url_resolved` makes a relative
+  SQLite path absolute; `is_sqlite`, `cors_origins_list` helpers.
+- `backend/app/database.py` — `make_engine()`, module `engine`/`SessionLocal`, `init_db()`,
+  `bind()` (repoint for tests), `session_scope()` context manager, `get_db()` FastAPI
+  dependency. SQLite `check_same_thread=False`.
+- `backend/app/models/` — SQLAlchemy 2.0 (`Mapped`/`mapped_column`):
+  * `Case` — one row per unique corpus doc (doc_id unique, year indexed, splits/JSON, title,
+    char_len, sha1).
+  * `UploadedDocument` — user upload (uuid id, filename, source_type, raw_text, page_count,
+    needs_ocr, warnings/JSON, year_hint, created_at).
+  * `RecommendationRun` + `RecommendationResult` — query history; run has ordered results
+    (cascade delete), each result stores scores + rationale + the full explanation JSON.
+- `backend/app/services/repository.py` — dependency-light DAO: `upsert_cases_from_corpus`
+  (idempotent), `get_case`/`list_cases` (title/year filters + pagination)/`case_stats`,
+  `create_upload`/`get_upload`, `record_run`/`get_run`/`list_recent_runs`.
+- `scripts/init_db.py` — `--drop`; creates the 4 tables and upserts all 295 cases.
+  Ran: 295 cases (235 with title, 1953–2018). DB file git-ignored.
+- `tests/test_database.py` — 7 tests (schema, idempotent upsert, list filters, stats,
+  upload + JSON warnings roundtrip, run stores ordered results + explanation JSON,
+  recent runs + cascade delete). Suite: 151 pass.
