@@ -202,3 +202,31 @@
 - `tests/test_text_similarity.py` — 13 tests (l2-normalise, provenance, TF-IDF toy
   clustering + self-sim=1 + self-exclusion, Doc2Vec build/infer, save/load roundtrip,
   real-corpus correlation *direction* on both splits). Suite: 90 pass.
+
+## Step 9 — Network Construction
+- `backend/app/ml/network_model.py` — PCNet + Hier-SPCNet as `networkx.DiGraph`, no
+  FastAPI/DB deps. Namespaced node ids (`case:`/`act:`/`chap:`/`sec:`), every node has
+  `ntype`, every edge an `etype`.
+  * `build_pcnet()` — 295 case nodes + citing→cited edges from Step 6 (weight = score/100).
+  * `build_hier_spcnet()` — PCNet + statute layer from Step 7: `case→section`, `case→act`,
+    `section→chapter/part`, `chapter→act`; non-curated Acts get a bare `act:` node
+    (`in_sample_hierarchy=False`), never dropped.
+  * `compute_icf()` — Inverse Citation Frequency = IDF over the case corpus
+    (`ln((N+1)/(df+1))+1`); stored on statute nodes and copied onto `case→statute` edges as
+    `weight`, so ubiquitous provisions (Constitution, IPC) are down-weighted.
+  * `graph_summary()`, `to_node_link()` / `from_node_link()` (JSON persistence).
+- `scripts/build_graph.py` — writes `data/graphs/{pcnet,hier_spcnet}.json` +
+  `graph_report.json`. Flags: `--min-score`, `--no-icf`.
+- Built on the real corpus (min_score 90):
+  * **PCNet**: 295 nodes, 24 edges, 271 weakly-connected components (largest 4),
+    252 isolated cases — the sparse case→case layer of §3.
+  * **Hier-SPCNet**: 3,108 nodes (295 case + 297 act + 2,484 section + 32 chapter),
+    6,725 edges; **41 components, largest 2,974**; isolated cases 252 → **31**.
+  * Most-cited: Constitution (148 cases), IPC (63), Art. 14 (43), IPC 302 (40) — exactly
+    the provisions ICF suppresses.
+  This shows the paper's core claim structurally: the statute layer is what makes the
+  network usable on this corpus; PCNet alone barely connects.
+- `tests/test_network_model.py` — 8 tests (PCNet edges/weights, ICF ordering, statute-layer
+  node/edge types + hierarchy path, Hier-SPCNet connects PCNet-isolated cases, ICF edge
+  weights, non-curated Act node, node-link roundtrip, real corpus). Suite: 98 pass.
+- `data/graphs/*` git-ignored (regenerable).
