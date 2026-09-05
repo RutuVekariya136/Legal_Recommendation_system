@@ -141,6 +141,16 @@ class StatuteHierarchy:
         canonical = re.sub(r"\s+", " ", surface.strip())
         return ActMatch(slug or "unknown_act", canonical, year, False)
 
+    def section_title(self, act_id: str, number: str) -> Optional[str]:
+        act = self._acts.get(act_id)
+        if not act:
+            return None
+        for container in (act.get("chapters") or act.get("parts") or {}).values():
+            t = (container.get("sections") or {}).get(str(number))
+            if t:
+                return t
+        return None
+
     def section_path(self, act_id: str, section: str) -> list[tuple[str, str, str]]:
         """Return [(level, node_id, label), ...] from Act down to the section's
         container. Empty if the Act/section isn't in the sample hierarchy."""

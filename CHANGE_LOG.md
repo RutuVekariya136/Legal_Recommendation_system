@@ -346,3 +346,30 @@
   filter, breakdown/rationale, unknown case, uploaded-text path, JSON-safety, real corpus
   surfaces the medical-negligence line). Also updated 2 text-similarity persistence tests.
   Suite: 137 pass.
+
+## Step 14 — Explainability
+- `backend/app/ml/explainability.py` — `Explainer` producing one frontend-ready
+  `SimilarityExplanation` per pair, no FastAPI/DB deps:
+  * `contributions` — per-component attribution. Weighted: `alpha·text` vs `beta·network`
+    (%s sum to 100). Learned-linear: `coef·feature` per feature + intercept term. MLP /
+    unfitted: raw inputs, no attribution (stated).
+  * `shared_statutes` — Act canonical name + section title from the curated hierarchy +
+    ICF + `in_curated_hierarchy` flag; a shared Act is dropped if a shared section already
+    represents it.
+  * `shared_cited_cases` — resolved cited doc_ids → corpus title + year (unresolved corpus
+    ids reported with `title=None`).
+  * `shared_raw_citations` — the unresolved party-name overlaps (this is where the signal
+    often is: two medical-negligence judgments share *Bolam*, *Hunter v Hanley*,
+    *Hucks v Cole*, *Maynard*).
+  * `summary` — natural-language, names the dominant driver + the shared provisions.
+  * `explain_pair(query_id, target_id)` and `explain_text(text, target_id, year)` (upload).
+- `StatuteHierarchy.section_title()` added; curated IPC Chapter IV expanded (ss. 79–93,
+  the "General Exceptions" relevant to negligence/consent).
+- `scripts/explain.py` — `--query`/`--file`, `--target`, `--hybrid`, `--json`.
+- Demo (Jacob Mathew vs Kusum Sharma, learned combiner): text 62% / network 15% /
+  intercept 23%; shared IPC s.88 & s.92 with titles; 9 shared citation strings incl. the
+  classic English medical-negligence authorities. This is the explainability breakdown the
+  project promised.
+- `tests/test_explainability.py` — 7 tests (weighted contributions sum to score, learned
+  intercept term, pair labels from hierarchy, JSON-safety, weak vs strong summary, upload
+  path, real corpus finds the shared English authorities). Suite: 144 pass.
