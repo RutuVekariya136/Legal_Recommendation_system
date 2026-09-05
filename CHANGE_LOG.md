@@ -91,3 +91,25 @@
 - `tests/test_preprocessing.py` — 16 tests (idempotence, de-hyphenation, abbreviation
   non-splitting, stopword/stem/boilerplate opt-in, real-doc end-to-end). Suite: 36 pass.
 - All `data/processed/` outputs git-ignored (regenerable).
+
+## Step 5 — PDF/Text Extraction
+- `backend/app/ml/text_extraction.py` — the upload-path extractor (PyMuPDF), no FastAPI dep:
+  * `extract_text_from_txt` — encoding fallback chain (utf-8-sig → utf-8 → cp1252 → latin-1,
+    then replace); never raises on decodable bytes, raises on empty.
+  * `extract_text_from_pdf` — text-layer extraction page by page; detects password-protected
+    PDFs (rejects, empty-password opened transparently); flags scanned/image PDFs as
+    `needs_ocr=True` with a warning (< 30 chars/page heuristic); optional repeated
+    header/footer stripping (`drop_repeated_lines`, on by default).
+  * `extract_text` — dispatch by extension (path) or `%PDF-` magic (bytes).
+  * `extract_and_preprocess` — extraction → the SAME `app.ml.preprocessing` pipeline, so an
+    uploaded case and a corpus case are represented identically.
+  * `ExtractedDocument` dataclass: source_name/type, raw_text, page_count, char_count,
+    metadata, warnings, needs_ocr.
+- Limitation surfaced, not hidden: no OCR engine is a dependency; image-only PDFs are
+  detected and reported, not silently returned empty.
+- `scripts/extract_text.py` — CLI: `extract_text.py <file>` [`--preprocess` `--out` `--stdout`],
+  plus `--selftest` which round-trips corpus doc `1953_24` through a generated 42-page PDF.
+  Selftest result: 99.8% word overlap with the corpus source, `needs_ocr=False` — passes.
+- `tests/test_text_extraction.py` — 11 tests (txt utf-8 / latin-1 / empty, pdf round-trip,
+  repeated-header stripping, scanned-PDF OCR flag, dispatch by extension & magic bytes,
+  unsupported type, extract+preprocess). Suite: 47 pass.

@@ -5,7 +5,7 @@
 [✓] 2. Repository Setup         (git init + first commit, README, pyproject, tests scaffold — 8 smoke tests pass)
 [✓] 3. Dataset Setup            (loader + ingest_data.py + manifest; 295 uniques, integrity clean; 20 tests pass)
 [✓] 4. Data Preprocessing       (preprocessing.py + preprocess.py; clean/sentences/tokens for 295 docs; 36 tests pass)
-[ ] 5. PDF/Text Extraction
+[✓] 5. PDF/Text Extraction      (text_extraction.py + extract_text.py; PDF/txt → shared preprocessing; selftest 99.8%; 47 tests pass)
 [ ] 6. Citation Extraction
 [ ] 7. Statute Extraction
 [ ] 8. Text Similarity
