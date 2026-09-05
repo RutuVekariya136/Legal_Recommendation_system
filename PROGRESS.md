@@ -13,7 +13,7 @@
 [✓] 10. Network Embedding       (network_embedding.py: node2vec + metapath2vec via Word2Vec on walks; generate_network_embeddings.py; 106 tests)
 # --- MVP critical path (doing these first) ---
 [✓] 11. Network Similarity      (network_similarity.py: embedding + ICF statute/citation overlap + breakdown; 116 tests)
-[ ] 12. Hybrid Similarity
+[✓] 12. Hybrid Similarity       (hybrid_similarity.py: weighted-sum + learned/NN-Map-style combiner; build_hybrid.py; CV Spearman 0.75 val; 128 tests)
 [ ] 13. Recommendation Engine
 [ ] 14. Explainability
 [ ] 17. Database

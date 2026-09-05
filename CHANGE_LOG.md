@@ -287,3 +287,33 @@
 - `tests/test_network_similarity.py` — 10 tests (jaccard / weighted-jaccard / ICF,
   embedding vs blend method, breakdown lists, score bounds, most_similar ordering,
   save/load, real corpus). Suite: 116 pass.
+
+## Step 12 — Hybrid Similarity
+- `backend/app/ml/hybrid_similarity.py` — combines text score (Step 8) + network score
+  (Step 11), no FastAPI/DB deps.
+  * `WeightedSumCombiner` — `clip(α·text + β·network)`, α/β auto-normalised. OUR simple hybrid.
+  * `LearnedCombiner` — Ridge (default) or small MLP trained on the expert pairs to map
+    features → expert similarity; feature set configurable (default
+    `[text_score, network_score]`, can add embedding/statute/citation/co-citation).
+    Follows the *idea* of the base paper's **NN-Map+Conc**; the paper's reported gains are
+    theirs on their 53k-case corpus, not ours. Includes `cross_val_pearson()` for an honest
+    in-sample estimate.
+  * `HybridSimilarityModel` — `features(a,b)`, `score`, `explain` (full breakdown incl. the
+    Step 11 network breakdown), `most_similar`, `fit_learned(split="validation")`,
+    `evaluate_correlation(split)`, `save`.
+- `scripts/build_hybrid.py` — `--method weighted|learned`, `--alpha/--beta`, `--model`,
+  `--evaluate`. Saves `data/embeddings/hybrid/` (config + `learned_model.joblib`).
+- Real corpus (tfidf text + metapath2vec/blend network), numbers exactly as computed:
+  | combiner            | validation                       | test                       |
+  |---------------------|----------------------------------|----------------------------|
+  | weighted 0.5/0.5    | Pearson +0.628 / Spearman +0.703 | -0.043 / -0.035  MSE 0.174 |
+  | learned (Ridge)     | **5-fold CV** Pearson +0.647 / Spearman +0.749 / MSE 0.055 | -0.035 / -0.051  MSE 0.066 |
+  Learned weights: text 0.86, network 0.27, intercept +0.21 — text carries the signal on
+  validation; the learned intercept/scaling cuts MSE roughly in half vs the weighted sum.
+  **Test correlation is ~0 for weighted AND learned** — now confirmed across text, network,
+  and hybrid → this is a property of the 90-pair test split, not a pipeline bug. Step 22
+  will characterise it (range restriction; 31/90 pairs touch a graph-isolated case;
+  legal ≠ topical similarity).
+- `tests/test_hybrid_similarity.py` — 12 tests (α/β normalise, clipping, learned fit
+  recovers a linear target, CV metrics, unfitted raises, model features/score/explain/
+  most_similar, fit_learned guard, save). Suite: 128 pass.
