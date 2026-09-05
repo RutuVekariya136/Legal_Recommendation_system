@@ -170,3 +170,35 @@
 - `tests/test_statute_extraction.py` — 14 tests (alias/year/abbrev resolution, bare-node
   fallback, §3 example "Section 66(1) … (XI of 1922)", article→Constitution default,
   anaphora resolution, multi-number expansion, hierarchy path, real corpus). Suite: 77 pass.
+
+## Step 8 — Text Similarity
+- `backend/app/ml/text_similarity.py` — three embedders behind one `BaseTextEmbedder`
+  interface, each with a `provenance` label, no FastAPI/DB deps:
+  * `TfidfEmbedder` — sklearn TF-IDF (1–2 grams, sublinear tf, L2). BASELINE (ours).
+  * `Doc2VecEmbedder` — gensim PV-DM, vector_size 200, window 15, 40 epochs, workers=1
+    (reproducible). BASE PAPER method; hyper-params are ours (paper published none).
+  * `SbertEmbedder` — sentence-transformers `all-MiniLM-L6-v2`, long docs chunked
+    (~320 words) and mean-pooled. OUR ENHANCEMENT; lazy import, clear error if
+    requirements-ml.txt not installed.
+  * `TextSimilarityIndex` — fitted embedder + (n_docs, dim) L2-normalised matrix +
+    doc-id lookup; `pair_similarity`, `most_similar`, `query_vector`, `query_text`,
+    `save`/`load` (matrix.npy + index.json).
+  * `prepare_documents()` reuses Step 4's `data/processed/{tokens,clean}/` when present.
+- `scripts/generate_embeddings.py` — `--method tfidf|doc2vec|sbert`, `--evaluate`.
+  Writes `data/embeddings/<method>/` (git-ignored, regenerable).
+- Ran on the real corpus (`--evaluate`): TEXT-ONLY cosine-vs-expert-score sanity check
+  (NOT the hybrid evaluation — Step 22), numbers exactly as computed:
+  | method  | build | validation (n=100)        | test (n=90)                |
+  |---------|-------|---------------------------|----------------------------|
+  | tfidf   | 3.9s  | Pearson +0.664 / Spearman +0.765 | Pearson -0.014 / Spearman -0.023 |
+  | doc2vec | 132s  | Pearson +0.654 / Spearman +0.668 | Pearson -0.009 / Spearman -0.023 |
+  **FLAG for Step 22:** both embedders correlate well on validation but are near-zero on
+  test. Same CSV format both splits; referential integrity verified. Test pairs sit in a
+  restricted 0.15–0.90 range and several topically-close pairs (e.g. two Land Acquisition
+  cases) are scored *low* while topically-distant pairs score high — consistent with the
+  paper's thesis that text alone is insufficient, but the magnitude needs investigating
+  (embedding choice, or a genuine property of the 90-pair test set). No number here is
+  presented as a result — it is a wiring sanity check.
+- `tests/test_text_similarity.py` — 13 tests (l2-normalise, provenance, TF-IDF toy
+  clustering + self-sim=1 + self-exclusion, Doc2Vec build/infer, save/load roundtrip,
+  real-corpus correlation *direction* on both splits). Suite: 90 pass.
