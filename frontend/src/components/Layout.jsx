@@ -18,6 +18,7 @@ export default function Layout({ children }) {
           <nav className="flex gap-1">
             <NavLink to="/search" className={navClass}>Search</NavLink>
             <NavLink to="/upload" className={navClass}>Upload</NavLink>
+            <NavLink to="/evaluation" className={navClass}>Evaluation</NavLink>
             <NavLink to="/about" className={navClass}>About</NavLink>
           </nav>
           <form

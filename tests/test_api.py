@@ -165,6 +165,19 @@ def test_compare_unknown_404(client):
     assert client.get("/api/compare", params={"a": "a", "b": "zzz"}).status_code == 404
 
 
+# -- graph ---------------------------------------------------
+
+def test_ego_graph(client):
+    j = client.get("/api/graph/case/a", params={"similar": 2, "statutes": 3}).json()
+    assert j["center"] == "case:a"
+    types = {n["type"] for n in j["nodes"]}
+    assert "case" in types and ("section" in types or "act" in types)
+    # the center case cites IPC 302 -> a stat node and a cites edge
+    assert any(e["type"] == "cites" for e in j["edges"])
+    assert any(e["type"] == "similar" for e in j["edges"])
+    assert client.get("/api/graph/case/zzz").status_code == 404
+
+
 # -- search -------------------------------------------------
 
 def test_search_semantic_ranks_by_content(client):

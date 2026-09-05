@@ -165,6 +165,62 @@ class RecommenderService:
         return {"query": query, "mode": mode, "total": len(hits),
                 "limit": limit, "offset": offset, "items": items}
 
+    # -- ego graph (Hier-SPCNet neighbourhood of a case) -----------
+    def ego_graph(self, doc_id: str, *, n_similar: int = 6, n_statutes: int = 8) -> dict:
+        if doc_id not in self.corpus:
+            raise KeyError(doc_id)
+        ni = self.engine.model.network_index
+        feats = ni.features.get(doc_id)
+        center = f"case:{doc_id}"
+        nodes = {center: {"id": center, "label": self.corpus[doc_id].title or doc_id,
+                          "type": "case", "center": True,
+                          "year": self.corpus[doc_id].year}}
+        edges = []
+
+        hier = self.explainer.hierarchy
+
+        # statutes this case cites: prefer ones with a curated label, then by ICF
+        def _stat_key(k: str):
+            act_id = k.split("::s")[0]
+            num = k.split("::s")[-1] if "::s" in k else None
+            has_label = bool(num and hier.section_title(act_id, num)) or (
+                "::s" not in k and hier.has_act(act_id)
+            )
+            return (not has_label, -ni.icf.get(k, 1.0))
+
+        stat_keys = sorted(
+            list((feats.act_ids if feats else set())) +
+            list((feats.section_keys if feats else set())),
+            key=_stat_key,
+        )[:n_statutes]
+        for k in stat_keys:
+            is_section = "::s" in k
+            act_id = k.split("::s")[0]
+            nid = f"stat:{k}"
+            label = (f"{hier.act_canonical(act_id) or act_id} s.{k.split('::s')[-1]}"
+                     if is_section else (hier.act_canonical(act_id) or act_id))
+            nodes[nid] = {"id": nid, "label": label,
+                          "type": "section" if is_section else "act",
+                          "icf": round(ni.icf.get(k, 1.0), 2)}
+            edges.append({"source": center, "target": nid, "type": "cites", "weight": ni.icf.get(k, 1.0)})
+
+        # most similar cases, and which of the above statutes they share
+        for nb in self.engine.recommend_for_case(doc_id, k=n_similar).results:
+            nid = f"case:{nb.doc_id}"
+            nodes[nid] = {"id": nid, "label": nb.title or nb.doc_id, "type": "case",
+                          "year": nb.year, "score": nb.hybrid_score}
+            edges.append({"source": center, "target": nid, "type": "similar",
+                          "weight": nb.hybrid_score})
+            nbf = ni.features.get(nb.doc_id)
+            if nbf:
+                shared = (nbf.act_ids | nbf.section_keys)
+                for k in stat_keys:
+                    if k in shared:
+                        edges.append({"source": nid, "target": f"stat:{k}",
+                                      "type": "cites", "weight": ni.icf.get(k, 1.0)})
+
+        return {"center": center, "nodes": list(nodes.values()), "edges": edges}
+
     def _snippet(self, doc_id: str, query_lower: str, *, width: int = 240) -> str:
         import re
 

@@ -9,6 +9,7 @@ function unwrap(p) {
 export const api = {
   ready: () => unwrap(client.get("/health/ready")),
   stats: () => unwrap(client.get("/stats")),
+  evalSummary: () => unwrap(client.get("/evaluate/summary")),
 
   search: (q, { mode = "semantic", yearMin, yearMax, split, limit = 20, offset = 0, withFacets = true } = {}) =>
     unwrap(
@@ -38,6 +39,9 @@ export const api = {
         params: { k, year_min: yearMin, year_max: yearMax, min_score: minScore },
       }),
     ),
+
+  egoGraph: (docId, { similar = 6, statutes = 8 } = {}) =>
+    unwrap(client.get(`/graph/case/${encodeURIComponent(docId)}`, { params: { similar, statutes } })),
 
   compare: (a, b) => unwrap(client.get("/compare", { params: { a, b } })),
   compareUpload: (uploadId, target) =>

@@ -5,6 +5,11 @@ import tailwindcss from "@tailwindcss/vite";
 // Dev server proxies /api to the FastAPI backend on :8000.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/setup-tests.js"],
+  },
   server: {
     port: 5173,
     proxy: {

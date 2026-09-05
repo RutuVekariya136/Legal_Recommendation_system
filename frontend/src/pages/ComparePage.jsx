@@ -1,8 +1,9 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../services/api.js";
 import { useAsync } from "../hooks/useAsync.js";
-import { ErrorBox, Loading } from "../components/ui.jsx";
+import { ErrorBox, Loading, Section } from "../components/ui.jsx";
 import ExplanationPanel from "../components/ExplanationPanel.jsx";
+import SideBySide from "../components/SideBySide.jsx";
 
 export default function ComparePage({ kind }) {
   const { uploadId } = useParams();
@@ -28,7 +29,18 @@ export default function ComparePage({ kind }) {
       </div>
 
       <ErrorBox error={error} />
-      {loading ? <Loading /> : <div className="mt-5"><ExplanationPanel ex={ex} /></div>}
+      {loading ? (
+        <Loading />
+      ) : (
+        ex && (
+          <div className="mt-5">
+            <ExplanationPanel ex={ex} />
+            <Section title="Side-by-side text">
+              <SideBySide ex={ex} kind={kind} uploadId={uploadId} />
+            </Section>
+          </div>
+        )
+      )}
     </div>
   );
 }

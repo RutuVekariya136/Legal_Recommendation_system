@@ -510,3 +510,41 @@
 - `tests/test_evaluation.py` — 8 tests (metric math incl. constant-prediction NaN, ranking,
   diagnosis flags, real validation ρ > 0.5); `test_api.py` +1 (`/api/evaluate` via
   monkeypatched report dir). Suite: 184 pass.
+
+## Step 15 — Case Comparison (side-by-side text)
+- `frontend/src/components/HighlightedText.jsx` — wraps matches of shared statute refs
+  (green) and shared cited-party keywords (amber) in `<mark>` via one combined RegExp.
+- `frontend/src/components/SideBySide.jsx` — lazily fetches both judgments' full text
+  (`/cases/{id}/text`, or the upload preview for the uploaded side) and renders them in two
+  scrollable columns with the highlights from the explanation's `shared_statutes` /
+  `shared_raw_citations`.
+- `ComparePage` now shows the scoring breakdown *and* a "Side-by-side text" section.
+- Verified in-browser: Jacob Mathew vs Kusum Sharma renders both texts with the shared
+  authorities and s.302/s.88 highlighted.
+
+## Step 16 — Citation Graph
+- `RecommenderService.ego_graph(doc_id)` — a compact Hier-SPCNet neighbourhood from the
+  feature store: the case, its top statutes (curated-labelled first, then by ICF), its
+  top-6 similar cases, and edges where a similar case shares one of those statutes. No nx
+  graph load needed.
+- `backend/app/routers/graph.py` — `GET /api/graph/case/{doc_id}?similar=&statutes=`.
+- `frontend/src/components/GraphView.jsx` — dependency-free radial SVG (center case,
+  similar cases on the left arc, statutes on the right; edge thickness = hybrid score;
+  click a case node to open it). `GraphPage` at `/case/:docId/graph`, linked from `CasePage`.
+- `tests/test_api.py` +1 (ego graph shape + 404). Backend suite: 185 pass.
+
+## Step 23 — Testing (frontend)
+- Vitest + jsdom + @testing-library/react wired (`vite.config.js` `test` block,
+  `src/setup-tests.js`, `npm run test`).
+- `src/__tests__/components.test.jsx` (5) — ScoreBar, Badge, HighlightedText.
+- `src/__tests__/api.test.js` (5) — axios client mocked: URL/param shaping for
+  recommendCase / compare / egoGraph, FormData build for upload, `apiError` fallbacks.
+- `npm run test` → 10 passing. Backend still 185.
+
+## Step 24 — Optimization
+- Route-level code splitting (`React.lazy` + `Suspense` in `App.jsx`): initial JS bundle
+  **618 KB → 173 KB** (56 KB gzip); Recharts (382 KB) now loads only on `/compare`, the
+  graph SVG only on `/case/:id/graph`. Chunk-size warning gone.
+- `RecommenderService.ego_graph` reads the in-memory feature store (no graph rebuild);
+  the learned combiner is loaded from `hybrid/learned_model.joblib` (no refit) when
+  `build_all.py` has run — cold service load ≈ 1–4 s.

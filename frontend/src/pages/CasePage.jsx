@@ -36,6 +36,12 @@ export default function CasePage() {
         >
           Find similar cases
         </Link>
+        <Link
+          to={`/case/${c.doc_id}/graph`}
+          className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+        >
+          Citation graph
+        </Link>
         <button
           onClick={() => api.getCaseText(c.doc_id).then((r) => setFull(r.text))}
           className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"

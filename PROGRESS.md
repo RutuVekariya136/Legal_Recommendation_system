@@ -26,9 +26,9 @@
 # ---  MVP COMPLETE  ---
 
 # --- optional / polish (after MVP) ---
-[ ] 15. Case Comparison
-[ ] 16. Citation Graph
-[ ] 23. Testing
-[ ] 24. Optimization
+[✓] 15. Case Comparison         (HighlightedText + SideBySide on ComparePage)
+[✓] 16. Citation Graph          (ego_graph service + /api/graph/case + GraphView SVG + GraphPage)
+[✓] 23. Testing                 (Vitest wired; 10 frontend tests; backend 185)
+[✓] 24. Optimization            (route code-split: 618KB -> 173KB initial bundle)
 [ ] 25. Documentation
 [ ] 26. Final Demo
