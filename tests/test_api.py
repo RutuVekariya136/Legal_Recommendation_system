@@ -294,3 +294,24 @@ def test_root_redirects_to_docs(client):
 def test_openapi_schema_available(client):
     j = client.get("/openapi.json").json()
     assert "/api/recommend/case/{doc_id}" in j["paths"]
+
+
+def test_evaluate_endpoint(client, tmp_path_factory, monkeypatch):
+    import json as _json
+
+    from app.routers import evaluate as ev
+
+    report = {"generated_at": "now", "pairs": {"validation": 100, "test": 90},
+              "protocol": "x",
+              "results": [{"config": "text: tfidf", "kind": "text",
+                           "splits": {"validation": {"correlation": {"spearman": 0.76, "pearson": 0.66, "mse": 0.12}},
+                                      "test": {"correlation": {"spearman": -0.02, "pearson": -0.01, "mse": 0.19}}}}],
+              "diagnosis": {}}
+    d = tmp_path_factory.mktemp("proc")
+    (d / "evaluation_report.json").write_text(_json.dumps(report))
+    monkeypatch.setattr(ev, "data_processed_dir", lambda: d)
+
+    assert client.get("/api/evaluate").json()["pairs"]["test"] == 90
+    s = client.get("/api/evaluate/summary").json()
+    assert s["rows"][0]["config"] == "text: tfidf"
+    assert s["rows"][0]["validation"]["spearman"] == 0.76

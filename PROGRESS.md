@@ -21,7 +21,10 @@
 [✓] 20. Search                  (search.py: title/semantic/hybrid modes + facets; 169 tests)
 [✓] 21. Upload Workflow         (upload.py: POST /upload + recommend/upload + compare/upload; 176 tests)
 [✓] 19. React Frontend          (Vite+Tailwind+Router+Recharts; Home/Search/Case/Recommend/Compare/Upload; verified live in browser; build clean)
-[ ] 22. Evaluation
+[✓] 22. Evaluation              (evaluation.py + evaluate.py + /api/evaluate + EVALUATION.md; val text ρ0.76 / learned-hybrid ρ0.75 MSE0.055; test ≈0 diagnosed; 184 tests)
+
+# ---  MVP COMPLETE  ---
+
 # --- optional / polish (after MVP) ---
 [ ] 15. Case Comparison
 [ ] 16. Citation Graph

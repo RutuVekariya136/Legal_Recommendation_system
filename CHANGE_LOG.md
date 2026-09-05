@@ -481,3 +481,32 @@
   (text 62% / network 15% / intercept 23%), IPC s.88/s.92 with titles + ICF, 9 shared
   English authorities (Bolam, Hunter v Hanley, …). No console errors.
 - No automated frontend tests yet (optional Step 23). Backend suite still 176 pass.
+
+## Step 22 — Evaluation
+- `backend/app/ml/evaluation.py` — `correlation_metrics` (Pearson/Spearman/MSE/MAE,
+  NaN-safe for constant predictions), `evaluate_pairwise`, `ranking_sanity` (MRR / hit@k
+  over query docs with an expert partner ≥ 0.5), `diagnose_split` (range restriction +
+  isolated-case flags). No FastAPI/DB deps.
+- `backend/app/ml/hybrid_similarity.py` — `LearnedCombiner.cross_val_predict()` factored out.
+- `scripts/evaluate.py` — benchmarks 13 configs (text tfidf/doc2vec, network
+  metapath2vec/node2vec embedding & blend, weighted hybrids, learned linear/MLP, +year &
+  random baselines) × 2 splits with an honest protocol (direct correlation; learned = 5-fold
+  CV on validation, train-all-validation for test). Writes `data/processed/
+  evaluation_report.json`, prints tables + a test-split diagnosis.
+- `backend/app/routers/evaluate.py` — `GET /api/evaluate` (full report) and
+  `/api/evaluate/summary` (compact table); 404 with instructions if not generated.
+- **Results (real, from the 190 pairs):**
+  * Validation — text TF-IDF ρ **+0.76**; network metapath2vec ρ +0.44 (blend +0.48);
+    **learned-linear hybrid ρ +0.75, MSE 0.055** (≈½ the text-only MSE). Year-proximity
+    baseline +0.29, random −0.13. → network mainly improves *calibration* here, not
+    re-ranking; gain is smaller than the paper's (+11.8%) because our corpus has 24
+    case→case edges vs their dense 53k graph — **not claimed as ours**.
+  * Test — every method incl. both baselines ≈ 0 correlation. Diagnosed: score range
+    restricted to [0.15,0.90]/16 values, 31/90 pairs touch a graph-isolated case, and even
+    the 59-pair no-isolation subset is ρ ≈ −0.03. Ranking sanity is still non-zero on test
+    (Doc2Vec MRR 0.30, hit@10 0.45) — the system retrieves similar cases even where it
+    can't reproduce the expert score gradations. Full analysis in `EVALUATION.md`.
+- `EVALUATION.md` — the writeup (tables + honest interpretation).
+- `tests/test_evaluation.py` — 8 tests (metric math incl. constant-prediction NaN, ranking,
+  diagnosis flags, real validation ρ > 0.5); `test_api.py` +1 (`/api/evaluate` via
+  monkeypatched report dir). Suite: 184 pass.

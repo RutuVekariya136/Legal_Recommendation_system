@@ -130,9 +130,8 @@ class LearnedCombiner(BaseCombiner):
         self._fitted = True
         return self
 
-    def cross_val_pearson(self, feats_list: Sequence[HybridFeatures],
-                          targets: Sequence[float], *, folds: int = 5) -> dict:
-        from scipy.stats import pearsonr, spearmanr
+    def cross_val_predict(self, feats_list: Sequence[HybridFeatures],
+                          targets: Sequence[float], *, folds: int = 5) -> np.ndarray:
         from sklearn.model_selection import KFold
 
         X = self._matrix(feats_list)
@@ -142,7 +141,15 @@ class LearnedCombiner(BaseCombiner):
         for tr, te in kf.split(X):
             m = self._new_model()
             m.fit(X[tr], y[tr])
-            preds[te] = m.predict(X[te])
+            preds[te] = np.clip(m.predict(X[te]), 0.0, 1.0)
+        return preds
+
+    def cross_val_pearson(self, feats_list: Sequence[HybridFeatures],
+                          targets: Sequence[float], *, folds: int = 5) -> dict:
+        from scipy.stats import pearsonr, spearmanr
+
+        y = np.asarray(targets, dtype=np.float64)
+        preds = self.cross_val_predict(feats_list, targets, folds=folds)
         return {
             "folds": folds,
             "cv_pearson": float(pearsonr(preds, y).statistic),
