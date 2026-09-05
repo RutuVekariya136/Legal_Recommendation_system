@@ -96,35 +96,48 @@ def _jaccard(a: set[str], b: set[str]) -> float:
 # Feature store                                                               #
 # --------------------------------------------------------------------------- #
 
+def extract_doc_features(
+    text: str,
+    *,
+    title_index: CorpusTitleIndex,
+    hierarchy=None,
+    year: Optional[int] = None,
+    self_doc_id: Optional[str] = None,
+    min_citation_score: float = 90.0,
+) -> DocFeatures:
+    """Structural features for one document's text (works for an uploaded case
+    that is not in the corpus)."""
+    hierarchy = hierarchy or load_hierarchy()
+    cited_ids: set[str] = set()
+    raw: set[str] = set()
+    for c in extract_case_citations(text):
+        norm = normalize_citation(c.party_a, c.party_b)
+        if len(norm) >= 10 and " v " in norm:
+            raw.add(norm)
+        r = title_index.resolve(
+            c, exclude_doc_id=self_doc_id, min_score=min_citation_score, not_after_year=year
+        )
+        if r is not None and r.to_doc_id != self_doc_id:
+            cited_ids.add(r.to_doc_id)
+
+    ds = resolve_document_statutes(text, hierarchy=hierarchy)
+    return DocFeatures(
+        cited_doc_ids=cited_ids, raw_citations=raw,
+        act_ids=set(ds.act_ids), section_keys=set(ds.section_keys),
+    )
+
+
 def build_feature_store(corpus, *, min_citation_score: float = 90.0) -> dict[str, DocFeatures]:
     title_index = CorpusTitleIndex.from_corpus(corpus)
     hierarchy = load_hierarchy()
-    store: dict[str, DocFeatures] = {}
-
-    for doc_id in corpus.doc_ids:
-        text = corpus.text(doc_id)
-        year = corpus[doc_id].year
-
-        cited_ids: set[str] = set()
-        raw: set[str] = set()
-        for c in extract_case_citations(text):
-            norm = normalize_citation(c.party_a, c.party_b)
-            if len(norm) >= 10 and " v " in norm:
-                raw.add(norm)
-            r = title_index.resolve(
-                c, exclude_doc_id=doc_id, min_score=min_citation_score, not_after_year=year
-            )
-            if r is not None:
-                cited_ids.add(r.to_doc_id)
-
-        ds = resolve_document_statutes(text, hierarchy=hierarchy)
-        store[doc_id] = DocFeatures(
-            cited_doc_ids=cited_ids,
-            raw_citations=raw,
-            act_ids=set(ds.act_ids),
-            section_keys=set(ds.section_keys),
+    return {
+        doc_id: extract_doc_features(
+            corpus.text(doc_id), title_index=title_index, hierarchy=hierarchy,
+            year=corpus[doc_id].year, self_doc_id=doc_id,
+            min_citation_score=min_citation_score,
         )
-    return store
+        for doc_id in corpus.doc_ids
+    }
 
 
 def compute_statute_icf(store: dict[str, DocFeatures]) -> dict[str, float]:
@@ -215,17 +228,23 @@ class NetworkSimilarityIndex:
     def embedding_score(self, a: str, b: str) -> float:
         return max(0.0, self.embeddings.pair_similarity(a, b))
 
-    def statute_overlap(self, a: str, b: str) -> float:
-        fa, fb = self.features.get(a, DocFeatures()), self.features.get(b, DocFeatures())
+    def _statute_overlap(self, fa: DocFeatures, fb: DocFeatures) -> float:
         return _weighted_jaccard(
             fa.act_ids | fa.section_keys, fb.act_ids | fb.section_keys, self.icf
         )
 
-    def citation_overlap(self, a: str, b: str) -> float:
-        fa, fb = self.features.get(a, DocFeatures()), self.features.get(b, DocFeatures())
+    def _citation_overlap(self, fa: DocFeatures, fb: DocFeatures) -> float:
         return _jaccard(
             fa.cited_doc_ids | fa.raw_citations, fb.cited_doc_ids | fb.raw_citations
         )
+
+    def statute_overlap(self, a: str, b: str) -> float:
+        return self._statute_overlap(self.features.get(a, DocFeatures()),
+                                     self.features.get(b, DocFeatures()))
+
+    def citation_overlap(self, a: str, b: str) -> float:
+        return self._citation_overlap(self.features.get(a, DocFeatures()),
+                                      self.features.get(b, DocFeatures()))
 
     def _combine(self, emb: float, stat: float, cite: float) -> float:
         if self.method == "embedding":
@@ -266,6 +285,39 @@ class NetworkSimilarityIndex:
             shared_citation_doc_ids=sorted(fa.cited_doc_ids & fb.cited_doc_ids),
             shared_raw_citations=sorted(fa.raw_citations & fb.raw_citations),
         )
+
+    # -- ad-hoc query (uploaded doc, not in the corpus) -------------
+    def query_breakdown(self, qfeat: DocFeatures, target: str, *,
+                        embedding_score: float = 0.0) -> NetworkSimilarityBreakdown:
+        fb = self.features.get(target, DocFeatures())
+        emb = max(0.0, float(embedding_score))
+        stat = self._statute_overlap(qfeat, fb)
+        cite = self._citation_overlap(qfeat, fb)
+        shared_acts = sorted(qfeat.act_ids & fb.act_ids, key=lambda x: -self.icf.get(x, 1.0))
+        shared_secs = sorted(qfeat.section_keys & fb.section_keys, key=lambda x: -self.icf.get(x, 1.0))
+        return NetworkSimilarityBreakdown(
+            doc_id_1="<query>", doc_id_2=target,
+            network_score=round(self._combine(emb, stat, cite), 4),
+            embedding_score=round(emb, 4),
+            statute_overlap=round(stat, 4),
+            citation_overlap=round(cite, 4),
+            cocitation_count=0,
+            shared_acts=[{"act_id": a, "icf": round(self.icf.get(a, 1.0), 3)} for a in shared_acts],
+            shared_sections=[
+                {"section_key": s, "number": s.split("::s")[-1], "icf": round(self.icf.get(s, 1.0), 3)}
+                for s in shared_secs
+            ],
+            shared_citation_doc_ids=sorted(qfeat.cited_doc_ids & fb.cited_doc_ids),
+            shared_raw_citations=sorted(qfeat.raw_citations & fb.raw_citations),
+        )
+
+    def query_overlaps(self, qfeat: DocFeatures, target: str) -> tuple[float, float]:
+        fb = self.features.get(target, DocFeatures())
+        return self._statute_overlap(qfeat, fb), self._citation_overlap(qfeat, fb)
+
+    def query_similarity(self, qfeat: DocFeatures, target: str, *, embedding_score: float = 0.0) -> float:
+        stat, cite = self.query_overlaps(qfeat, target)
+        return self._combine(max(0.0, embedding_score), stat, cite)
 
     def most_similar(self, doc_id: str, k: int = 10, *, exclude_self: bool = True) -> list[Neighbour]:
         scores = []

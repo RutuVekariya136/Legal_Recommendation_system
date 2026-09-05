@@ -287,13 +287,23 @@ class TextSimilarityIndex:
         matrix = embedder.embed_corpus()
         return cls(embedder.name, [d.doc_id for d in docs], matrix, embedder=embedder)
 
-    def save(self, directory: Optional[Path] = None) -> Path:
+    def save(self, directory: Optional[Path] = None, *, with_embedder: bool = True) -> Path:
         directory = ensure_dir(Path(directory) if directory else data_embeddings_dir() / self.method)
         np.save(directory / "matrix.npy", self.matrix)
+        embedder_saved = False
+        if with_embedder and self.embedder is not None:
+            try:
+                import joblib
+
+                joblib.dump(self.embedder, directory / "embedder.joblib")
+                embedder_saved = True
+            except Exception:  # noqa: BLE001 - e.g. SBERT model not picklable; not fatal
+                embedder_saved = False
         (directory / "index.json").write_text(
             json.dumps({"method": self.method, "doc_ids": self.doc_ids,
                         "embedding_dim": int(self.matrix.shape[1]),
-                        "embedder_config": self.embedder_config}, indent=2),
+                        "embedder_config": self.embedder_config,
+                        "embedder_saved": embedder_saved}, indent=2),
             encoding="utf-8",
         )
         return directory
@@ -303,7 +313,16 @@ class TextSimilarityIndex:
         directory = Path(directory)
         meta = json.loads((directory / "index.json").read_text(encoding="utf-8"))
         matrix = np.load(directory / "matrix.npy")
-        idx = cls(meta["method"], meta["doc_ids"], matrix)
+        embedder = None
+        emb_path = directory / "embedder.joblib"
+        if emb_path.is_file():
+            try:
+                import joblib
+
+                embedder = joblib.load(emb_path)
+            except Exception:  # noqa: BLE001
+                embedder = None
+        idx = cls(meta["method"], meta["doc_ids"], matrix, embedder=embedder)
         idx.embedder_config = meta.get("embedder_config", {})
         return idx
 
@@ -347,3 +366,18 @@ class TextSimilarityIndex:
         pd = preprocess_text(text, config=config)
         vec = self.embedder.embed_text(pd.tokens, pd.clean_text)
         return self._rank(np.asarray(vec, dtype=np.float32), k, set())
+
+    def query_scores(self, text: str, *, config: PreprocessConfig = DEFAULT_CONFIG) -> dict[str, float]:
+        """Cosine of `text` against every corpus doc, as {doc_id: score}."""
+        if self.embedder is None:
+            raise RuntimeError("this index was loaded without an embedder; rebuild to query raw text")
+        pd = preprocess_text(text, config=config)
+        vec = l2_normalize(np.asarray(self.embedder.embed_text(pd.tokens, pd.clean_text),
+                                     dtype=np.float32)[None, :])[0]
+        scores = self.matrix @ vec
+        return {d: float(s) for d, s in zip(self.doc_ids, scores)}
+
+    def scores_for(self, doc_id: str) -> dict[str, float]:
+        """Cosine of an indexed doc against every corpus doc."""
+        scores = self.matrix @ self.matrix[self._row[doc_id]]
+        return {d: float(s) for d, s in zip(self.doc_ids, scores)}

@@ -317,3 +317,32 @@
 - `tests/test_hybrid_similarity.py` — 12 tests (α/β normalise, clipping, learned fit
   recovers a linear target, CV metrics, unfitted raises, model features/score/explain/
   most_similar, fit_learned guard, save). Suite: 128 pass.
+
+## Step 13 — Recommendation Engine
+- `backend/app/ml/recommendation.py` — `RecommendationEngine` over the Step 8/11/12
+  artifacts, no FastAPI/DB deps:
+  * `recommend_for_case(doc_id, k, filters)` — ranks the corpus by hybrid score.
+  * `recommend_for_text(text, k, year, filters)` — for an UPLOADED case: text score via
+    `query_scores`, network score = **structural overlap only** (no graph node →
+    `embedding_score=0`, `query_in_corpus=False` in the result — stated, not hidden).
+  * `Filters` — year range, exclude ids, min hybrid score.
+  * `Recommendation` — rank, scores (hybrid/text/network/embedding/statute/citation),
+    shared Acts/sections/citations, co-citation count, and a rule-based `rationale`
+    string ("strong textual overlap; shares 2 statute section(s) (s.92, s.88); …").
+  * `RecommendationResult.to_dict()` is JSON-safe (ready for the FastAPI layer).
+  * `explain_pair(a, b)` → the full Step 12 hybrid explanation.
+- Supporting additions: `TextSimilarityIndex.query_scores()` / `.scores_for()` (all-doc
+  cosine); embedder now persisted to `embedder.joblib` on `save()` (picklable ones) so a
+  loaded index can serve raw-text queries; `NetworkSimilarityIndex.query_breakdown()` /
+  `.query_overlaps()` for ad-hoc `DocFeatures`; `extract_doc_features()` factored out of
+  `build_feature_store()`.
+- `scripts/recommend.py` — CLI: `--case` / `--file` / `--text`, `--k`, `--year-min/max`,
+  `--hybrid`, `--explain TARGET`.
+- Qualitative check: query = "Jacob Mathew v State of Punjab" (landmark medical negligence)
+  → top hybrid neighbours are **Kusum Sharma (0.91), Dr. P. B. Desai (0.73),
+  Martin F. D'Souza (0.70)** — the medical-negligence precedent line, each with a
+  breakdown and rationale. The engine does what the project set out to do.
+- `tests/test_recommendation.py` — 7 tests (filters, case ranking + self-exclusion + year
+  filter, breakdown/rationale, unknown case, uploaded-text path, JSON-safety, real corpus
+  surfaces the medical-negligence line). Also updated 2 text-similarity persistence tests.
+  Suite: 137 pass.

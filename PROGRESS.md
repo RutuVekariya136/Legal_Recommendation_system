@@ -14,7 +14,7 @@
 # --- MVP critical path (doing these first) ---
 [✓] 11. Network Similarity      (network_similarity.py: embedding + ICF statute/citation overlap + breakdown; 116 tests)
 [✓] 12. Hybrid Similarity       (hybrid_similarity.py: weighted-sum + learned/NN-Map-style combiner; build_hybrid.py; CV Spearman 0.75 val; 128 tests)
-[ ] 13. Recommendation Engine
+[✓] 13. Recommendation Engine   (recommendation.py: Top-K for case/uploaded-text + filters + rationale; recommend.py; medical-negligence line surfaces; 137 tests)
 [ ] 14. Explainability
 [ ] 17. Database
 [ ] 18. FastAPI Backend

@@ -108,8 +108,18 @@ def test_save_and_load_roundtrip(tmp_path):
     assert loaded.pair_similarity("tax_1", "tax_2") == pytest.approx(
         idx.pair_similarity("tax_1", "tax_2"), abs=1e-6
     )
+    # the (picklable) TF-IDF embedder is persisted, so raw-text queries still work
+    assert loaded.embedder is not None
+    assert loaded.query_text("income tax revenue")[0].doc_id in {"tax_1", "tax_2"}
+
+
+def test_load_without_persisted_embedder_rejects_text_query(tmp_path):
+    idx = _fit_index(TfidfEmbedder(min_df=1))
+    idx.save(tmp_path, with_embedder=False)
+    loaded = TextSimilarityIndex.load(tmp_path)
+    assert loaded.embedder is None
     with pytest.raises(RuntimeError):
-        loaded.query_text("some text")  # no embedder after load
+        loaded.query_text("some text")
 
 
 # -- real corpus (TF-IDF only; doc2vec/sbert are slow/optional) ---
