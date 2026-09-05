@@ -113,3 +113,32 @@
 - `tests/test_text_extraction.py` — 11 tests (txt utf-8 / latin-1 / empty, pdf round-trip,
   repeated-header stripping, scanned-PDF OCR flag, dispatch by extension & magic bytes,
   unsupported type, extract+preprocess). Suite: 47 pass.
+
+## Step 6 — Citation Extraction (case → case)
+- `backend/app/ml/citation_extraction.py` — regex extraction + rapidfuzz resolution, no
+  FastAPI/model deps:
+  * `extract_case_citations()` — token-walk outward from each " v "/" vs "/" versus ",
+    strips lead-in words ("in", "see", "per", "Lord X in", judge names), stops at sentence
+    boundaries and citation debris, captures a trailing reporter year ("[1953] S.C.R. 589").
+  * `normalize_party()` / `normalize_citation()` — lowercase, drop "the/of/M/s/and others",
+    fold "&"→"and", unify Ltd/Co.
+  * `CorpusTitleIndex.from_corpus()` — fuzzy index over the 234/295 docs with a
+    party-style cause-title.
+  * `resolve()` — `fuzz.token_set_ratio` ≥ min_score, plus guards: ≥2 distinctive query
+    tokens (one ≥4 chars), `token_sort_ratio` ≥ 60, ≥2 shared distinctive tokens,
+    **temporal guard** (a judgment cannot cite a later case), optional reporter-year window,
+    self-exclusion.
+  * `build_citation_edges()` — directed citing→cited edges for the whole corpus (feeds
+    PCNet in Step 9); dedups, keeps best score + mention count.
+- `scripts/extract_citations.py` — writes `data/processed/citations/<doc_id>.json` +
+  `citation_report.json`. Flags: `--min-score` (default 90), `--limit`.
+- Ran on the real corpus (min_score 90): **1,857 raw mentions → 24 resolved case→case
+  edges**, resolution rate **1.4%**, 23/295 docs cite ≥1 corpus case, 20 distinct cited.
+  Threshold sensitivity: 88→34 edges, 90→24, 92→19.
+- This sparsity is the documented §3 limitation, stated plainly in the module docstring and
+  the report: most cited cases are English/foreign or lower-court decisions absent from a
+  295-doc demo corpus. The network signal will lean on the statute graph (Steps 7, 9).
+  Precision is prioritised over recall (a wrong edge = a false similarity signal).
+- `tests/test_citation_extraction.py` — 16 tests (extraction, lead-in stripping, sentence
+  boundary, reporter-year capture, normalisation, synthetic-index resolution incl. temporal
+  guard / self-exclusion / debris rejection, real-corpus edge build). Suite: 63 pass.

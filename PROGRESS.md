@@ -6,7 +6,7 @@
 [✓] 3. Dataset Setup            (loader + ingest_data.py + manifest; 295 uniques, integrity clean; 20 tests pass)
 [✓] 4. Data Preprocessing       (preprocessing.py + preprocess.py; clean/sentences/tokens for 295 docs; 36 tests pass)
 [✓] 5. PDF/Text Extraction      (text_extraction.py + extract_text.py; PDF/txt → shared preprocessing; selftest 99.8%; 47 tests pass)
-[ ] 6. Citation Extraction
+[✓] 6. Citation Extraction      (citation_extraction.py + extract_citations.py; 24 case→case edges @90, 1.4% resolution — §3 limitation; 63 tests)
 [ ] 7. Statute Extraction
 [ ] 8. Text Similarity
 [ ] 9. Network Construction
