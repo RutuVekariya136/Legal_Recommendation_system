@@ -1,34 +1,50 @@
 # Project Progress
 
-[✓] 0. Project Analysis
-[✓] 1. Environment Setup        (.venv on Python 3.12, core deps installed, check_env.py passes)
-[✓] 2. Repository Setup         (git init + first commit, README, pyproject, tests scaffold — 8 smoke tests pass)
-[✓] 3. Dataset Setup            (loader + ingest_data.py + manifest; 295 uniques, integrity clean; 20 tests pass)
-[✓] 4. Data Preprocessing       (preprocessing.py + preprocess.py; clean/sentences/tokens for 295 docs; 36 tests pass)
-[✓] 5. PDF/Text Extraction      (text_extraction.py + extract_text.py; PDF/txt → shared preprocessing; selftest 99.8%; 47 tests pass)
-[✓] 6. Citation Extraction      (citation_extraction.py + extract_citations.py; 24 case→case edges @90, 1.4% resolution — §3 limitation; 63 tests)
-[✓] 7. Statute Extraction       (statute_extraction.py + curated sample hierarchy + extract_statutes.py; 12,324 refs, 297 acts (23 curated); 77 tests)
-[✓] 8. Text Similarity          (text_similarity.py: TF-IDF/Doc2Vec/SBERT pluggable + index; generate_embeddings.py; 90 tests. NOTE: test-split text corr ~0 — flagged for Step 22)
-[✓] 9. Network Construction     (network_model.py: PCNet 24 edges / Hier-SPCNet 3108 nodes 6725 edges + ICF; build_graph.py; 98 tests)
-[✓] 10. Network Embedding       (network_embedding.py: node2vec + metapath2vec via Word2Vec on walks; generate_network_embeddings.py; 106 tests)
-# --- MVP critical path (doing these first) ---
-[✓] 11. Network Similarity      (network_similarity.py: embedding + ICF statute/citation overlap + breakdown; 116 tests)
-[✓] 12. Hybrid Similarity       (hybrid_similarity.py: weighted-sum + learned/NN-Map-style combiner; build_hybrid.py; CV Spearman 0.75 val; 128 tests)
-[✓] 13. Recommendation Engine   (recommendation.py: Top-K for case/uploaded-text + filters + rationale; recommend.py; medical-negligence line surfaces; 137 tests)
-[✓] 14. Explainability          (explainability.py: SimilarityExplanation + contribution attribution + labelled shared statutes/citations; explain.py; 144 tests)
-[✓] 17. Database                (config.py + database.py + models/ + repository.py + init_db.py; 295 cases loaded; 151 tests)
-[✓] 18. FastAPI Backend         (main.py + RecommenderService + schemas + routers health/stats/cases/recommend/compare; build_all.py; 163 tests)
-[✓] 20. Search                  (search.py: title/semantic/hybrid modes + facets; 169 tests)
-[✓] 21. Upload Workflow         (upload.py: POST /upload + recommend/upload + compare/upload; 176 tests)
-[✓] 19. React Frontend          (Vite+Tailwind+Router+Recharts; Home/Search/Case/Recommend/Compare/Upload; verified live in browser; build clean)
-[✓] 22. Evaluation              (evaluation.py + evaluate.py + /api/evaluate + EVALUATION.md; val text ρ0.76 / learned-hybrid ρ0.75 MSE0.055; test ≈0 diagnosed; 184 tests)
+**All 26 steps complete.** 185 backend tests + 10 frontend tests pass. Build the
+pipeline with `python scripts/build_all.py`, benchmark with `python scripts/evaluate.py`,
+demo per `DEMO.md`.
 
-# ---  MVP COMPLETE  ---
+```
+[✓]  0. Project Analysis
+[✓]  1. Environment Setup        .venv (Python 3.12), pinned deps, check_env.py
+[✓]  2. Repository Setup         git, README, pyproject, tests scaffold
+[✓]  3. Dataset Setup            app/utils/dataset.py, ingest_data.py, manifest (295 uniques)
+[✓]  4. Data Preprocessing       app/ml/preprocessing.py, preprocess.py
+[✓]  5. PDF/Text Extraction      app/ml/text_extraction.py, extract_text.py (--selftest 99.8%)
+[✓]  6. Citation Extraction      app/ml/citation_extraction.py (24 case→case edges @90; §3 limitation)
+[✓]  7. Statute Extraction       app/ml/statute_extraction.py + curated sample hierarchy (12,324 refs)
+[✓]  8. Text Similarity          TF-IDF / Doc2Vec / SBERT, generate_embeddings.py
+[✓]  9. Network Construction     PCNet + Hier-SPCNet (3,108 nodes / 6,725 edges) + ICF
+[✓] 10. Network Embedding        node2vec / metapath2vec via Word2Vec on random walks
+[✓] 11. Network Similarity       embedding + ICF statute/citation overlap + breakdown
+[✓] 12. Hybrid Similarity        weighted-sum + learned (Ridge/MLP, NN-Map-style); CV val Spearman 0.75
+[✓] 13. Recommendation Engine    Top-K for case / uploaded text + filters + rationale
+[✓] 14. Explainability           SimilarityExplanation: contribution attribution + labelled overlaps
+[✓] 15. Case Comparison          HighlightedText + SideBySide on ComparePage
+[✓] 16. Citation Graph           ego_graph service + /api/graph/case + GraphView SVG
+[✓] 17. Database                 SQLite + SQLAlchemy 2.0 models + repository; 295 cases loaded
+[✓] 18. FastAPI Backend          RecommenderService + 9 routers under /api
+[✓] 19. React Frontend           Vite + Tailwind + Router + Recharts; 9 pages
+[✓] 20. Search                   /api/search title/semantic/hybrid + facets
+[✓] 21. Upload Workflow          POST /api/upload → extract → recommend/compare
+[✓] 22. Evaluation               evaluation.py + evaluate.py + /api/evaluate + EVALUATION.md
+[✓] 23. Testing                  pytest (185) + vitest (10)
+[✓] 24. Optimization             route code-split (618KB → 173KB), no-refit service load
+[✓] 25. Documentation            README, ARCHITECTURE.md, SETUP.md, EVALUATION.md, notebook
+[✓] 26. Final Demo               DEMO.md, Makefile, run.ps1, pipeline_walkthrough.py
+```
 
-# --- optional / polish (after MVP) ---
-[✓] 15. Case Comparison         (HighlightedText + SideBySide on ComparePage)
-[✓] 16. Citation Graph          (ego_graph service + /api/graph/case + GraphView SVG + GraphPage)
-[✓] 23. Testing                 (Vitest wired; 10 frontend tests; backend 185)
-[✓] 24. Optimization            (route code-split: 618KB -> 173KB initial bundle)
-[ ] 25. Documentation
-[ ] 26. Final Demo
+## Headline evaluation (real, from `scripts/evaluate.py`)
+
+| | Validation (n=100) | Test (n=90) |
+|---|---|---|
+| text: TF-IDF | Spearman **+0.76** | ≈ 0 |
+| network: metapath2vec (blend) | Spearman +0.48 | ≈ 0 |
+| **hybrid: learned linear** | Spearman **+0.75**, MSE **0.055** | ≈ 0 |
+| baseline: year proximity / random | +0.29 / −0.13 | ≈ 0 |
+
+Test-split correlation is ≈ 0 for *every* method incl. trivial baselines — a property
+of that 90-pair split (range restriction; 31 pairs touch a graph-isolated case; the
+clean subset is still ≈ 0). Ranking sanity stays non-zero on test. We do **not** claim
+the paper's +11.8 % hybrid gain — their corpus has 53k cases and a dense citation graph;
+ours has 295 cases / 24 case→case edges. Full analysis: `EVALUATION.md`.

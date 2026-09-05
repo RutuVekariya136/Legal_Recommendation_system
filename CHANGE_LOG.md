@@ -548,3 +548,29 @@
 - `RecommenderService.ego_graph` reads the in-memory feature store (no graph rebuild);
   the learned combiner is loaded from `hybrid/learned_model.joblib` (no refit) when
   `build_all.py` has run — cold service load ≈ 1–4 s.
+
+## Step 25 — Documentation
+- `ARCHITECTURE.md` — pipeline diagram, a base-paper-vs-ours table, full code-layout map,
+  a runtime data-flow trace for a recommendation request, and how to scale the corpus.
+- `README.md` rewritten: concise module map, a **scripts table** (15 scripts → outputs),
+  an **API reference** (all `/api` routes), and a status section pointing at EVALUATION.md.
+- `notebooks/pipeline_walkthrough.py` — jupytext `# %%` cells driving `app.ml.*` directly
+  (preprocess → extract → text/network/hybrid → recommend/explain → evaluate). Runs
+  end-to-end; reproduces val Spearman +0.756 / MSE 0.054.
+- Every `app/ml/*` and `scripts/*` module already carries a module docstring stating its
+  pipeline stage and the base-paper-vs-ours split.
+
+## Step 26 — Final Demo
+- `DEMO.md` — one-time build, start-both-servers, and a 7-step UI walkthrough
+  (search → recommend → explain → side-by-side → citation graph → upload → evaluation)
+  with talking points and the honest caveats to state.
+- `Makefile` — `install / build / evaluate / backend / frontend / test / test-all / demo /
+  clean` targets.
+- `run.ps1` — Windows helper: `./run.ps1 {build|evaluate|test|demo|backend|frontend}`
+  (`demo` builds then launches both servers in new windows).
+- `PROGRESS.md` — final master checklist (all 26 ✓) + headline evaluation table.
+
+---
+
+**Project complete.** 26/26 steps. 185 backend + 10 frontend tests. See README.md,
+ARCHITECTURE.md, EVALUATION.md, DEMO.md.

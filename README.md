@@ -52,22 +52,24 @@ title matching; statute hierarchy ships as a small labeled sample).
 
 ## Repository layout
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full module map and data flow.
+
 ```
-backend/
-  app/
-    main.py, config.py, database.py      (added in later steps)
-    models/  schemas/  routers/  services/
-    ml/          text_similarity · citation_extraction · network_model
-                 hybrid_similarity · recommendation   (decoupled from routers/)
-    utils/
-  requirements.txt         core deps (Steps 3–18)
-  requirements-ml.txt      optional SBERT / FAISS extras (our enhancements)
-  requirements.lock.txt    pinned snapshot
-frontend/                  React + Vite + Tailwind (scaffolded at Step 19)
-data/   raw/ processed/ embeddings/ graphs/ indexes/
-scripts/  ingest_data · preprocess · extract_citations · build_graph ·
-          generate_embeddings · build_index · evaluate   (added per step)
-notebooks/   tests/
+backend/app/
+  config.py database.py main.py
+  models/  schemas/  routers/(9)  services/(recommender, repository)
+  ml/     preprocessing · text_extraction · citation_extraction · statute_extraction
+          text_similarity · network_model · network_embedding · network_similarity
+          hybrid_similarity · recommendation · explainability · evaluation
+          resources/statute_hierarchy.json        (ml/ has no FastAPI/DB import)
+  utils/  dataset.py  paths.py
+  requirements.txt / requirements-ml.txt (SBERT/FAISS) / requirements.lock.txt
+frontend/src/   services/api.js  hooks/  components/  pages/(9)      React + Vite + Tailwind
+data/   raw/ (committed)   processed/ graphs/ embeddings/ indexes/ (generated, git-ignored)
+scripts/   ingest_data preprocess extract_citations extract_statutes build_graph
+           generate_embeddings generate_network_embeddings build_network_similarity
+           build_hybrid recommend explain evaluate init_db build_all
+tests/     14 pytest modules (185 tests)   frontend/src/__tests__/  (10 vitest)
 ```
 
 ## Setup
@@ -82,30 +84,54 @@ pip install -r backend/requirements.txt
 python scripts/check_env.py        # all [ OK ] → ready
 ```
 
-## Running the tests
+## Build the pipeline, then run everything
 
 ```bash
-pytest
+python scripts/build_all.py         # preprocess → citations → statutes → graph →
+                                    # embeddings → network sim → hybrid → init DB  (~2–3 min)
+python scripts/evaluate.py          # correlation + ranking vs the 190 expert pairs
+uvicorn app.main:app --reload --app-dir backend      # API at :8000  (/docs)
+cd frontend && npm install && npm run dev            # UI at :5173  (proxies /api → :8000)
 ```
 
-## Running the backend API
+Then the demo walkthrough in [DEMO.md](DEMO.md).
 
-```bash
-python scripts/build_all.py        # one-time: build all ML artifacts + init the DB (~2-3 min)
-uvicorn app.main:app --reload --app-dir backend
-```
+### Scripts
 
-Open http://localhost:8000/docs for the interactive API. Key endpoints:
-`GET /api/health/ready`, `GET /api/cases`, `GET /api/recommend/case/{doc_id}`,
-`GET /api/compare?a=&b=`, `GET /api/stats`.
+| Script | Does | Output |
+|---|---|---|
+| `check_env.py` | verify interpreter + deps + dataset | — |
+| `ingest_data.py` | load & validate the corpus | `data/processed/corpus_manifest.json` |
+| `preprocess.py` | clean / sentence-split / tokenise | `data/processed/{clean,sentences,tokens}/` |
+| `extract_citations.py` | "A v B" extraction + fuzzy resolution | `data/processed/citations/` |
+| `extract_statutes.py` | Section/Act extraction + hierarchy | `data/processed/statutes/` |
+| `build_graph.py` | PCNet + Hier-SPCNet | `data/graphs/*.json` |
+| `generate_embeddings.py` | TF-IDF / Doc2Vec / SBERT text embeddings | `data/embeddings/<method>/` |
+| `generate_network_embeddings.py` | node2vec / metapath2vec | `data/embeddings/network_<method>/` |
+| `build_network_similarity.py` | embedding + ICF overlap feature store | `data/embeddings/network_similarity/` |
+| `build_hybrid.py` | weighted / learned combiner | `data/embeddings/hybrid/` |
+| `recommend.py` | CLI Top-K for a case / file / text | stdout |
+| `explain.py` | CLI pairwise explanation | stdout |
+| `evaluate.py` | full benchmark + test-split diagnosis | `data/processed/evaluation_report.json` |
+| `init_db.py` | create tables + load 295 cases | `legal_case_similarity.db` |
+| `build_all.py` | all of the above, in order | everything |
 
-## Build status
+### API (`/api`, full docs at `/docs`)
 
-Incremental build, one step at a time — see [PROGRESS.md](PROGRESS.md) and
-[CHANGE_LOG.md](CHANGE_LOG.md). Current: Step 2 (Repository Setup).
+`GET /health` · `GET /health/ready` · `GET /stats`
+`GET /cases` · `GET /cases/{id}` · `GET /cases/{id}/text`
+`GET /search?q=&mode=semantic|title|hybrid` · `GET /search/facets`
+`GET /recommend/case/{id}?k=&year_min=&year_max=` · `POST /recommend/upload/{id}`
+`GET /compare?a=&b=` · `GET /compare/upload/{id}?target=`
+`POST /upload` (multipart) · `GET /upload/{id}` · `GET /upload/{id}/text`
+`GET /graph/case/{id}` · `GET /evaluate` · `GET /evaluate/summary`
 
-No evaluation metrics are reported until the pipeline is actually run against the
-190 expert-scored pairs in `data/raw/`.
+## Status
+
+All 26 steps complete — see [PROGRESS.md](PROGRESS.md) and [CHANGE_LOG.md](CHANGE_LOG.md).
+185 backend tests + 10 frontend tests pass. Evaluation results and their honest
+interpretation are in [EVALUATION.md](EVALUATION.md) — every metric is computed by
+`scripts/evaluate.py` from the real 190 expert-scored pairs.
 
 ## Scope
 
