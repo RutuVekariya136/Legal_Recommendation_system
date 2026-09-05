@@ -230,3 +230,32 @@
   node/edge types + hierarchy path, Hier-SPCNet connects PCNet-isolated cases, ICF edge
   weights, non-curated Act node, node-link roundtrip, real corpus). Suite: 98 pass.
 - `data/graphs/*` git-ignored (regenerable).
+
+## Step 10 — Network Embedding
+- `backend/app/ml/network_embedding.py` — random-walk node embeddings over Hier-SPCNet
+  via gensim `Word2Vec` on walk "sentences" (no extra dependency), no FastAPI/DB deps:
+  * `node2vec_walks()` — biased walks (p, q), ICF edge weights, precomputed adjacency
+    sets for speed; trivial 1-node walks dropped. BASELINE.
+  * `metapath_walks()` — walks constrained to type schemas (`case-act-case`,
+    `case-section-case`, `case-section-chapter-section-case`,
+    `case-section-chapter-act-chapter-section-case`, `case-case`). BASE-PAPER-style.
+  * `NetworkEmbedder` — `fit(graph)` → skip-gram Word2Vec (workers=1, seeded);
+    `case_matrix(doc_ids)` returns `(n_cases, dim)` + the list of isolated cases with
+    no embedding (zero vector).
+  * `NetworkEmbeddingIndex` — L2-normalised case matrix, `pair_similarity` (0 if either
+    case is isolated), `most_similar`, `save`/`load`.
+- `scripts/generate_network_embeddings.py` — `--method`, `--graph`, `--evaluate`; loads
+  `data/graphs/hier_spcnet.json` if present. Writes `data/embeddings/network_<method>/`.
+- Real corpus, NETWORK-ONLY sanity correlation (NOT the hybrid eval — Step 22), exactly as
+  computed:
+  | method       | build | validation (n=100)         | test (n=90)                 |
+  |--------------|-------|----------------------------|-----------------------------|
+  | metapath2vec | 17s   | Pearson +0.346 / Spearman +0.444 | Pearson -0.043 / Spearman -0.052 |
+  | node2vec     | ~90s  | Pearson +0.361 / Spearman +0.481 | Pearson -0.093 / Spearman -0.087 |
+  Network signal is weaker than text on validation (Spearman ~0.45 vs ~0.75) but positive.
+  Test stays ~0 — **and 31 of the 90 test pairs involve a case that is isolated in the
+  graph** (zero network similarity by construction), vs only 8/100 on validation. Adds to
+  the Step 22 investigation of the test split. No number here is a result.
+- `tests/test_network_embedding.py` — 8 tests (walk reproducibility, metapath schema
+  adherence, index shapes + isolated-case tracking, cluster separation, self/missing
+  exclusion, save/load). Suite: 106 pass.

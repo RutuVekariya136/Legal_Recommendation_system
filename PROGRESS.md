@@ -10,7 +10,7 @@
 [✓] 7. Statute Extraction       (statute_extraction.py + curated sample hierarchy + extract_statutes.py; 12,324 refs, 297 acts (23 curated); 77 tests)
 [✓] 8. Text Similarity          (text_similarity.py: TF-IDF/Doc2Vec/SBERT pluggable + index; generate_embeddings.py; 90 tests. NOTE: test-split text corr ~0 — flagged for Step 22)
 [✓] 9. Network Construction     (network_model.py: PCNet 24 edges / Hier-SPCNet 3108 nodes 6725 edges + ICF; build_graph.py; 98 tests)
-[ ] 10. Network Embedding
+[✓] 10. Network Embedding       (network_embedding.py: node2vec + metapath2vec via Word2Vec on walks; generate_network_embeddings.py; 106 tests)
 [ ] 11. Network Similarity
 [ ] 12. Hybrid Similarity
 [ ] 13. Recommendation Engine
