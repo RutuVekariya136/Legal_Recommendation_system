@@ -1,0 +1,23 @@
+# Project-level tooling config. The backend is a plain package under backend/app;
+# it is intentionally NOT installed (no build step) — tests and scripts import it
+# via the pythonpath entry below.
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# Put backend/ on sys.path so `import app.ml.text_similarity` works from anywhere
+# (repo root, CI, or an IDE), keeping app/ml/ runnable without the FastAPI app.
+pythonpath = ["backend"]
+addopts = "-ra -q"
+filterwarnings = [
+    "ignore::DeprecationWarning:pkg_resources",
+]
+
+[tool.ruff]
+# Not a hard dependency; used only if the developer installs ruff.
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

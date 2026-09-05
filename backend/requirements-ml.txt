@@ -1,0 +1,20 @@
+# ---------------------------------------------------------------------------
+# OPTIONAL heavy ML dependencies for OUR OWN enhancements (not the base paper).
+#
+#   * sentence-transformers -> Sentence-BERT text embeddings (our addition)
+#   * faiss-cpu             -> fast approximate Top-K search (our addition)
+#
+# Do NOT install these during Step 1. They are large (torch is ~200 MB+) and
+# are only needed from the Text Similarity / Build Index steps onward.
+# Install them then, into the SAME virtual environment:
+#
+#   (Windows)  .venv\Scripts\activate
+#   pip install -r backend/requirements-ml.txt
+#
+# torch is pulled in automatically by sentence-transformers (CPU build on
+# Windows). If you want to force the CPU wheel explicitly:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# ---------------------------------------------------------------------------
+
+sentence-transformers>=3.0,<4.0
+faiss-cpu>=1.8,<2.0

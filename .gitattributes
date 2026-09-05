@@ -1,0 +1,11 @@
+# Normalise line endings for source; leave the raw dataset untouched byte-for-byte.
+* text=auto eol=lf
+
+# Real judgment text + expert scores — never let git rewrite these.
+data/raw/** -text
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.faiss binary
+*.index binary
