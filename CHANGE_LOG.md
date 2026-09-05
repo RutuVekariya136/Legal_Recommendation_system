@@ -65,3 +65,29 @@
 - `tests/test_dataset.py` — 12 tests (parse_year, extract_title, 295 uniques, overlap
   splits, per-split counts, referential integrity, title coverage). Total suite: 20 pass.
 - `data/processed/corpus_manifest.json` is git-ignored (regenerable via the script).
+
+## Step 4 — Data Preprocessing
+- `backend/app/ml/preprocessing.py` — deterministic text pipeline, no FastAPI/model deps.
+  Produces three representations per judgment:
+  * `clean_text` — NFKC + quote/dash folding, de-hyphenation, page-marker strip,
+    whitespace collapse; cased & punctuated. Idempotent. For SBERT / display.
+  * `sentences` — abbreviation-aware rule-based segmentation (protects "v.", "No.",
+    "u/art.", "C.C.", single-letter initials, ~80 legal abbrevs); no model download.
+  * `tokens` — lowercased alphabetic tokens, gensim English stopwords removed. BoW input
+    for TF-IDF / Doc2Vec (base-paper methods).
+- Clearly-labelled OUR options, all OFF by default so the Doc2Vec/TF-IDF baseline stays
+  faithful: `remove_legal_boilerplate` (drops "court", "appellant", …), `stem` (gensim
+  Porter), `min_token_len`. `PreprocessConfig` is frozen and logged with every run.
+- Header detection (court/date/cause-title/"delivered by" → body split) is conservative
+  and only affects `tokens`; `clean_text` keeps the full document.
+- `scripts/preprocess.py` — runs the pipeline over all 295 docs, writes
+  `data/processed/{clean,sentences,tokens}/<doc_id>.*` + `preprocess_report.json`
+  (config + aggregate/per-doc stats). Flags: `--limit`, `--stem`, `--legal-boilerplate`,
+  `--no-stopwords`, `--keep-header`.
+- Ran full corpus (default config): headers detected 295/295; corpus vocab 26,477;
+  tokens/doc median 1,689 / mean 2,360 / max 15,597; sentences/doc median 122.
+  Top tokens: court, act, case, state, appellant, high, order, said, section.
+  (Descriptive counts, not evaluation results.)
+- `tests/test_preprocessing.py` — 16 tests (idempotence, de-hyphenation, abbreviation
+  non-splitting, stopword/stem/boilerplate opt-in, real-doc end-to-end). Suite: 36 pass.
+- All `data/processed/` outputs git-ignored (regenerable).
