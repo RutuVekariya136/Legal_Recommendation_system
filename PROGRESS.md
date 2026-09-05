@@ -2,7 +2,7 @@
 
 [✓] 0. Project Analysis
 [✓] 1. Environment Setup        (.venv on Python 3.12, core deps installed, check_env.py passes)
-[~] 2. Repository Setup
+[✓] 2. Repository Setup         (git init + first commit, README, pyproject, tests scaffold — 8 smoke tests pass)
 [ ] 3. Dataset Setup
 [ ] 4. Data Preprocessing
 [ ] 5. PDF/Text Extraction
