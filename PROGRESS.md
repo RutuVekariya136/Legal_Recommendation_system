@@ -20,7 +20,7 @@
 [✓] 18. FastAPI Backend         (main.py + RecommenderService + schemas + routers health/stats/cases/recommend/compare; build_all.py; 163 tests)
 [✓] 20. Search                  (search.py: title/semantic/hybrid modes + facets; 169 tests)
 [✓] 21. Upload Workflow         (upload.py: POST /upload + recommend/upload + compare/upload; 176 tests)
-[ ] 19. React Frontend
+[✓] 19. React Frontend          (Vite+Tailwind+Router+Recharts; Home/Search/Case/Recommend/Compare/Upload; verified live in browser; build clean)
 [ ] 22. Evaluation
 # --- optional / polish (after MVP) ---
 [ ] 15. Case Comparison

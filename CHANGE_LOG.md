@@ -459,3 +459,25 @@
   authorities Bolam / Hunter v Hanley / Hucks v Cole.
 - `tests/test_api.py` — +7 upload tests (txt round-trip → recommend + compare, pdf,
   bad extension / fake pdf / empty → 422, unknown upload / target → 404). Suite: 176 pass.
+
+## Step 19 — React Frontend
+- Scaffolded `frontend/` — React 18 + Vite 6 + Tailwind v4 (`@tailwindcss/vite`) + React
+  Router 6 + Axios + Recharts. `npm install` (146 pkgs), `npm run build` clean
+  (618 KB JS — Recharts; chunk-size warning only, Step 24 can code-split).
+- `vite.config.js` proxies `/api` → `http://localhost:8000` (override `VITE_API_TARGET`).
+- `src/services/api.js` — one axios fn per endpoint; `src/hooks/useAsync.js` — fetch-on-deps.
+- Components: `Layout` (nav + global search), `ui.jsx` (`ScoreBar`, `Badge`, `Loading`,
+  `ErrorBox`, `Section`), `RecommendationList` (per-result score bars + shared-statute
+  badges + rationale), `ExplanationPanel` (score bars + **Recharts contribution chart** +
+  shared-statutes table with Act name/section title/ICF + shared-citations badges + summary).
+- Pages: Home (live `/stats`), Search (semantic/title/hybrid modes + decade facet bars),
+  Case (detail + lazy full text), Recommend (case or upload, k / year filters), Compare
+  (pair or upload-vs-target), Upload (PDF/txt → extraction result → "find similar").
+- `.claude/launch.json` for `preview_start`. `frontend/dist` + `.claude/settings.local.json`
+  git-ignored; `package-lock.json` committed.
+- Verified live against the running backend in a browser: search "medical negligence" →
+  the medical-negligence line with snippets + facets; `/recommend/case/2005_S_628` → ranked
+  results with score bars; `/compare?a=2005_S_628&b=2010_B_40` → contribution chart
+  (text 62% / network 15% / intercept 23%), IPC s.88/s.92 with titles + ICF, 9 shared
+  English authorities (Bolam, Hunter v Hanley, …). No console errors.
+- No automated frontend tests yet (optional Step 23). Backend suite still 176 pass.

@@ -1,14 +1,32 @@
 # Frontend
 
-React + Vite + Tailwind + React Router + Axios + Recharts + Cytoscape.js / React Flow.
+React 18 + Vite 6 + Tailwind v4 + React Router 6 + Axios + Recharts.
 
-**Not scaffolded yet.** The Vite project is created at **Step 19 (React Frontend)**.
-Until then this folder only holds the intended directory shape:
+## Run
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:5173  (proxies /api -> http://localhost:8000)
+```
+
+The backend must be running (`uvicorn app.main:app --app-dir backend` from the repo root).
+Override the API target with `VITE_API_TARGET=http://host:port npm run dev`.
+
+## Build
+
+```bash
+npm run build        # -> dist/
+npm run preview
+```
+
+## Layout
 
 ```
 src/
-  components/   reusable UI (score breakdown, case card, graph view, ...)
-  pages/        route-level screens (Search, Case, Compare, Graph, Evaluation)
-  hooks/        data-fetching / state hooks
-  services/     Axios API client for the FastAPI backend
+  services/api.js       axios client (one function per endpoint)
+  hooks/useAsync.js     fetch-on-deps hook
+  components/           Layout, ui primitives (ScoreBar, Badge…),
+                        RecommendationList, ExplanationPanel (Recharts breakdown)
+  pages/                Home, Search, Case, Recommend, Compare, Upload, About
 ```
