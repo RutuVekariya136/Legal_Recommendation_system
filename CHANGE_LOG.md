@@ -142,3 +142,31 @@
 - `tests/test_citation_extraction.py` — 16 tests (extraction, lead-in stripping, sentence
   boundary, reporter-year capture, normalisation, synthetic-index resolution incl. temporal
   guard / self-exclusion / debris rejection, real-corpus edge build). Suite: 63 pass.
+
+## Step 7 — Statute Extraction
+- `backend/app/ml/resources/statute_hierarchy.json` — HAND-CURATED SAMPLE hierarchy
+  (Act → Part/Chapter → Section) for 23 frequently-cited Acts (IPC, CrPC, CPC,
+  Constitution, Evidence/Contract Act, Income-tax 1922 & 1961, etc.) + a ~55-entry alias
+  table. Clearly labelled in `_meta` as NOT the paper's unpublished 12,814-Act tree.
+- `backend/app/ml/statute_extraction.py` — regex extraction + Act resolution, no
+  FastAPI/model deps:
+  * `_STATUTE_RE` — "Section/Article/Rule N(sub)(sub) [and M] of the <Name> Act, YYYY";
+    handles interior lowercase words ("Government of India Act"), roman Act numbers
+    ("(XI of 1922)"), multi-number refs expanded to one `StatuteReference` each.
+  * `StatuteHierarchy.resolve_act()` — alias match with year disambiguation; **any Act not
+    in the sample still returns an `ActMatch` with `in_sample_hierarchy=False`** (bare node,
+    never dropped/invented).
+  * `find_primary_act_definition()` — detects "the X Act, YYYY (hereinafter … 'the Act')".
+  * `resolve_document_statutes()` — resolves anaphoric "the Act"/"the said Act"/"the Rules"
+    to the doc's primary Act (explicit definition, else most-mentioned substantive Act,
+    preferring a real Act over the Constitution/General Clauses Act).
+  * `hierarchy_paths()` — Act → Chapter/Part path for curated sections (feeds Hier-SPCNet).
+- `scripts/extract_statutes.py` — writes `data/processed/statutes/<doc_id>.json` +
+  `statute_report.json`. Ran on the real corpus:
+  **12,324 references (10,202 section + 2,122 article)**, 258/295 docs cite ≥1 Act,
+  33 docs have an explicit "the Act" definition, **8,205 anaphoric "the Act" resolved** /
+  473 unresolved, **297 distinct Acts (23 curated + 274 bare Act nodes)**,
+  561 section→hierarchy paths. (Descriptive counts, not evaluation results.)
+- `tests/test_statute_extraction.py` — 14 tests (alias/year/abbrev resolution, bare-node
+  fallback, §3 example "Section 66(1) … (XI of 1922)", article→Constitution default,
+  anaphora resolution, multi-number expansion, hierarchy path, real corpus). Suite: 77 pass.
