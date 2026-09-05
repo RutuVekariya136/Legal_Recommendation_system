@@ -88,6 +88,17 @@ python scripts/check_env.py        # all [ OK ] → ready
 pytest
 ```
 
+## Running the backend API
+
+```bash
+python scripts/build_all.py        # one-time: build all ML artifacts + init the DB (~2-3 min)
+uvicorn app.main:app --reload --app-dir backend
+```
+
+Open http://localhost:8000/docs for the interactive API. Key endpoints:
+`GET /api/health/ready`, `GET /api/cases`, `GET /api/recommend/case/{doc_id}`,
+`GET /api/compare?a=&b=`, `GET /api/stats`.
+
 ## Build status
 
 Incremental build, one step at a time — see [PROGRESS.md](PROGRESS.md) and

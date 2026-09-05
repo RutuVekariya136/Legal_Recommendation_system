@@ -1,0 +1,177 @@
+"""Tests for the FastAPI app (Step 18), using an injected lightweight service."""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.database import get_db, init_db, make_engine
+from app.ml.explainability import Explainer
+from app.ml.hybrid_similarity import HybridSimilarityModel, WeightedSumCombiner
+from app.ml.network_embedding import NetworkEmbeddingIndex
+from app.ml.network_similarity import DocFeatures, NetworkSimilarityIndex
+from app.ml.preprocessing import preprocess_text
+from app.ml.recommendation import RecommendationEngine
+from app.ml.text_similarity import TextDoc, TextSimilarityIndex, TfidfEmbedder
+from app.main import app
+from app.services import repository as repo
+from app.services.recommender import RecommenderService, ServiceMeta, get_service
+
+
+class _Doc:
+    def __init__(self, doc_id, year, title, text):
+        self.doc_id, self.year, self.title, self._text = doc_id, year, title, text
+        self.path = f"/x/{doc_id}.txt"
+        self.splits = ("validation",)
+
+    def sha1(self):
+        return "a" * 40
+
+
+class _Corpus:
+    def __init__(self, docs):
+        self._d = {d.doc_id: d for d in docs}
+
+    def __len__(self):
+        return len(self._d)
+
+    @property
+    def doc_ids(self):
+        return sorted(self._d)
+
+    def __getitem__(self, k):
+        return self._d[k]
+
+    def __contains__(self, k):
+        return k in self._d
+
+    def text(self, k):
+        return self._d[k]._text
+
+
+DOCS = [
+    _Doc("a", 1990, "A v State", "s. 302 of the Indian Penal Code murder accused evidence"),
+    _Doc("b", 1995, "B v State", "s. 302 of the Indian Penal Code murder witness sentence"),
+    _Doc("c", 2001, "C v Union", "s. 66 of the Indian Income-tax Act, 1922 assessment revenue"),
+    _Doc("d", 2011, "D v Union", "s. 66 of the Indian Income-tax Act, 1922 assessment return"),
+]
+
+
+@pytest.fixture(scope="module")
+def client(tmp_path_factory):
+    corpus = _Corpus(DOCS)
+    te = TfidfEmbedder(min_df=1)
+    te.fit([TextDoc(i, preprocess_text(corpus.text(i)).tokens, corpus.text(i))
+            for i in corpus.doc_ids])
+    ti = TextSimilarityIndex("tfidf", corpus.doc_ids, te.embed_corpus(), embedder=te)
+    ei = NetworkEmbeddingIndex("metapath2vec", corpus.doc_ids, np.eye(4, dtype=np.float32))
+    store = {
+        "a": DocFeatures(act_ids={"ipc_1860"}, section_keys={"ipc_1860::s302"}),
+        "b": DocFeatures(act_ids={"ipc_1860"}, section_keys={"ipc_1860::s302"}),
+        "c": DocFeatures(act_ids={"income_tax_act_1922"}, section_keys={"income_tax_act_1922::s66"}),
+        "d": DocFeatures(act_ids={"income_tax_act_1922"}, section_keys={"income_tax_act_1922::s66"}),
+    }
+    ni = NetworkSimilarityIndex(ei, store, method="blend")
+    hybrid = HybridSimilarityModel(ti, ni, WeightedSumCombiner(0.5, 0.5))
+    engine = RecommendationEngine(corpus, hybrid)
+    svc = RecommenderService(
+        corpus, engine, Explainer(corpus, hybrid, title_index=engine.title_index),
+        ServiceMeta("tfidf", "metapath2vec", "weighted", len(corpus), [], 0.0),
+    )
+
+    db_engine = make_engine(f"sqlite:///{tmp_path_factory.mktemp('db') / 'api.db'}")
+    init_db(db_engine)
+    with Session(db_engine) as s:
+        repo.upsert_cases_from_corpus(s, corpus)
+
+    def _get_db():
+        s = Session(db_engine)
+        try:
+            yield s
+        finally:
+            s.close()
+
+    app.dependency_overrides[get_service] = lambda: svc
+    app.dependency_overrides[get_db] = _get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+# -- health / stats ---------------------------------------------
+
+def test_health(client):
+    assert client.get("/api/health").json()["status"] == "ok"
+
+
+def test_ready(client):
+    j = client.get("/api/health/ready").json()
+    assert j["ready"] is True and j["n_cases"] == 4
+
+
+def test_stats(client):
+    j = client.get("/api/stats").json()
+    assert j["cases"] == 4 and j["model"]["text_method"] == "tfidf"
+
+
+# -- cases -----------------------------------------------------
+
+def test_list_cases_and_filter(client):
+    assert client.get("/api/cases").json()["total"] == 4
+    j = client.get("/api/cases", params={"year_min": 2000}).json()
+    assert {i["doc_id"] for i in j["items"]} == {"c", "d"}
+
+
+def test_get_case_detail_and_text(client):
+    d = client.get("/api/cases/a").json()
+    assert d["title"] == "A v State" and d["preview"].startswith("s. 302")
+    assert client.get("/api/cases/a/text").json()["text"] == DOCS[0]._text
+    assert client.get("/api/cases/zzz").status_code == 404
+
+
+# -- recommend ------------------------------------------------
+
+def test_recommend_case_ranks_and_records_run(client):
+    j = client.get("/api/recommend/case/a", params={"k": 2}).json()
+    assert j["results"][0]["doc_id"] == "b"          # same statute + topic
+    assert j["run_id"] and j["method"] == "weighted"
+    assert j["results"][0]["shared_sections"][0]["section_key"] == "ipc_1860::s302"
+    # the run is persisted
+    recent = client.get("/api/recommend/case/a", params={"k": 1, "save": False}).json()
+    assert recent["run_id"] is None
+
+
+def test_recommend_unknown_case_404(client):
+    assert client.get("/api/recommend/case/nope").status_code == 404
+
+
+def test_recommend_respects_year_filter(client):
+    j = client.get("/api/recommend/case/c", params={"k": 5, "year_min": 2005}).json()
+    assert [r["doc_id"] for r in j["results"]] == ["d"]
+
+
+# -- compare -------------------------------------------------
+
+def test_compare_returns_explanation(client):
+    j = client.get("/api/compare", params={"a": "a", "b": "b"}).json()
+    assert j["method"] == "weighted"
+    assert any(s["section_number"] == "302" for s in j["shared_statutes"])
+    assert sum(c["pct_of_score"] for c in j["contributions"]) == pytest.approx(100, abs=1)
+
+
+def test_compare_unknown_404(client):
+    assert client.get("/api/compare", params={"a": "a", "b": "zzz"}).status_code == 404
+
+
+# -- misc ----------------------------------------------------
+
+def test_root_redirects_to_docs(client):
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 307 and r.headers["location"] == "/docs"
+
+
+def test_openapi_schema_available(client):
+    j = client.get("/openapi.json").json()
+    assert "/api/recommend/case/{doc_id}" in j["paths"]

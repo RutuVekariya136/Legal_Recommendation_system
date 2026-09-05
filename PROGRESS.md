@@ -17,7 +17,7 @@
 [✓] 13. Recommendation Engine   (recommendation.py: Top-K for case/uploaded-text + filters + rationale; recommend.py; medical-negligence line surfaces; 137 tests)
 [✓] 14. Explainability          (explainability.py: SimilarityExplanation + contribution attribution + labelled shared statutes/citations; explain.py; 144 tests)
 [✓] 17. Database                (config.py + database.py + models/ + repository.py + init_db.py; 295 cases loaded; 151 tests)
-[ ] 18. FastAPI Backend
+[✓] 18. FastAPI Backend         (main.py + RecommenderService + schemas + routers health/stats/cases/recommend/compare; build_all.py; 163 tests)
 [ ] 20. Search
 [ ] 21. Upload Workflow
 [ ] 19. React Frontend

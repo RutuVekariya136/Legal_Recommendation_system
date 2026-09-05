@@ -11,6 +11,8 @@ pythonpath = ["backend"]
 addopts = "-ra -q"
 filterwarnings = [
     "ignore::DeprecationWarning:pkg_resources",
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated",
 ]
 
 [tool.ruff]

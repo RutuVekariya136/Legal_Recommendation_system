@@ -258,6 +258,27 @@ class HybridSimilarityModel:
         }
 
     # -- persistence ----------------------------------------------
+    @classmethod
+    def load(cls, directory: Path, text_index: TextSimilarityIndex,
+             network_index: NetworkSimilarityIndex) -> "HybridSimilarityModel":
+        directory = Path(directory)
+        cfg = json.loads((directory / "config.json").read_text(encoding="utf-8"))
+        c = cfg["combiner"]
+        if c["name"] == "weighted":
+            combiner: BaseCombiner = WeightedSumCombiner(
+                c.get("alpha", 0.5), c.get("beta", 0.5), normalize=False
+            )
+        else:
+            combiner = LearnedCombiner(model=c.get("model", "linear"),
+                                       features=tuple(c.get("features", ("text_score", "network_score"))))
+            mp = directory / "learned_model.joblib"
+            if mp.is_file():
+                import joblib
+
+                combiner._model = joblib.load(mp)
+                combiner._fitted = True
+        return cls(text_index, network_index, combiner)
+
     def save(self, directory: Optional[Path] = None) -> Path:
         directory = ensure_dir(Path(directory) if directory
                                else data_embeddings_dir() / "hybrid")

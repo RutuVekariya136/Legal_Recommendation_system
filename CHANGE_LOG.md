@@ -396,3 +396,31 @@
 - `tests/test_database.py` — 7 tests (schema, idempotent upsert, list filters, stats,
   upload + JSON warnings roundtrip, run stores ordered results + explanation JSON,
   recent runs + cascade delete). Suite: 151 pass.
+
+## Step 18 — FastAPI Backend
+- `backend/app/services/recommender.py` — `RecommenderService`: `load_default()` loads the
+  persisted artifacts (`data/embeddings/{tfidf, network_metapath2vec, network_similarity,
+  hybrid}`) or rebuilds any that are missing; holds corpus + `RecommendationEngine` +
+  `Explainer` + `ServiceMeta`. `get_service()` is `lru_cache`d. Cold load ≈ 4s with
+  artifacts present, ≈ 25s rebuilding.
+- `backend/app/ml/hybrid_similarity.py` — added `HybridSimilarityModel.load()` (restores
+  weighted or learned combiner incl. `learned_model.joblib`).
+- `backend/app/schemas/models.py` — Pydantic v2 response models (health/ready, corpus
+  stats, case summary/detail/list, recommendation item/response, explanation response).
+- `backend/app/routers/` — `health` (`/health`, `/health/ready`), `stats` (`/stats`),
+  `cases` (`/cases` list+filters+pagination, `/cases/{id}`, `/cases/{id}/text`),
+  `recommend` (`/recommend/case/{id}` → Top-K, records a `RecommendationRun` unless
+  `save=false`), `compare` (`/compare?a=&b=` → full explanation). All under `/api`.
+- `backend/app/main.py` — `create_app()`: CORS from settings, routers mounted, lifespan
+  runs `init_db()` (+ optional `WARM_ON_STARTUP=1`), `/` → `/docs`.
+- `scripts/build_all.py` — runs the whole pipeline (preprocess → citations → statutes →
+  graph → tfidf → metapath2vec → network-sim → hybrid → init_db) in order.
+- Manual `TestClient` check: service loads in 3.8s; `/api/recommend/case/2005_S_628`
+  returns Kusum Sharma / Dr P.B. Desai / Martin D'Souza with a persisted `run_id`;
+  `/api/compare` returns the labelled breakdown.
+- `tests/test_api.py` — 12 tests via an **injected lightweight service** + tmp SQLite
+  (`dependency_overrides`): health/ready/stats, case list+filter+detail+text+404,
+  recommend ranking + run persistence + year filter + 404, compare explanation +
+  contribution %s + 404, root redirect, OpenAPI schema. `test_smoke` FastAPI-decoupling
+  check moved to a subprocess (session-pollution-proof). Suite: 163 pass.
+- README: added "Running the backend API" (`scripts/build_all.py` then `uvicorn`).

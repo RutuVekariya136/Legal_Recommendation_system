@@ -25,11 +25,23 @@ def test_backend_package_imports():
 
 
 def test_ml_subpackage_imports_without_fastapi():
-    # app.ml must not pull in FastAPI (CLAUDE.md §4: ML decoupled from routers).
-    importlib.import_module("app.ml")
+    # app.ml must stay decoupled from FastAPI (CLAUDE.md §4). Checked in a fresh
+    # subprocess so an earlier test importing app.main can't pollute the result.
+    import subprocess
     import sys
 
-    assert "fastapi" not in sys.modules, "importing app.ml should not import fastapi"
+    code = (
+        "import sys, importlib;"
+        "[importlib.import_module(m) for m in ("
+        "'app.ml.text_similarity','app.ml.network_model','app.ml.network_embedding',"
+        "'app.ml.network_similarity','app.ml.hybrid_similarity','app.ml.recommendation',"
+        "'app.ml.explainability','app.ml.citation_extraction','app.ml.statute_extraction',"
+        "'app.ml.preprocessing','app.ml.text_extraction')];"
+        "sys.exit(1 if 'fastapi' in sys.modules else 0)"
+    )
+    env = {"PYTHONPATH": str((REPO_ROOT := __import__('pathlib').Path(__file__).resolve().parents[1]) / 'backend')}
+    r = subprocess.run([sys.executable, "-c", code], env={**__import__("os").environ, **env})
+    assert r.returncode == 0, "importing app.ml.* pulled in fastapi"
 
 
 def test_core_dependencies_present():
