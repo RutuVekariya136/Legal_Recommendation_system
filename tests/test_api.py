@@ -165,6 +165,47 @@ def test_compare_unknown_404(client):
     assert client.get("/api/compare", params={"a": "a", "b": "zzz"}).status_code == 404
 
 
+# -- search -------------------------------------------------
+
+def test_search_semantic_ranks_by_content(client):
+    j = client.get("/api/search", params={"q": "murder trial evidence", "mode": "semantic"}).json()
+    assert j["mode"] == "semantic"
+    assert [i["doc_id"] for i in j["items"][:2]] == ["a", "b"] or \
+           {i["doc_id"] for i in j["items"][:2]} == {"a", "b"}
+    assert j["items"][0]["snippet"]
+
+
+def test_search_title_mode_requires_title_hit(client):
+    j = client.get("/api/search", params={"q": "Union", "mode": "title"}).json()
+    assert {i["doc_id"] for i in j["items"]} == {"c", "d"}
+    assert all(i["title_match"] for i in j["items"])
+    assert j["total"] == 2
+
+
+def test_search_year_filter_and_facets(client):
+    j = client.get("/api/search", params={"q": "assessment", "mode": "semantic",
+                                          "year_min": 2005}).json()
+    assert all(i["year"] >= 2005 for i in j["items"])
+    assert j["facets"]["total"] == 4
+    assert j["facets"]["splits"] == {"validation": 4}
+
+
+def test_search_facets_endpoint(client):
+    j = client.get("/api/search/facets").json()
+    assert j["total"] == 4 and "years" in j
+
+
+def test_search_pagination(client):
+    p1 = client.get("/api/search", params={"q": "the", "mode": "hybrid", "limit": 1, "offset": 0}).json()
+    p2 = client.get("/api/search", params={"q": "the", "mode": "hybrid", "limit": 1, "offset": 1}).json()
+    if p1["total"] >= 2:
+        assert p1["items"][0]["doc_id"] != p2["items"][0]["doc_id"]
+
+
+def test_search_invalid_mode_422(client):
+    assert client.get("/api/search", params={"q": "x", "mode": "fuzzy"}).status_code == 422
+
+
 # -- misc ----------------------------------------------------
 
 def test_root_redirects_to_docs(client):

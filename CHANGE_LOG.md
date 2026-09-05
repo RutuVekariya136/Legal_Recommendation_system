@@ -424,3 +424,20 @@
   contribution %s + 404, root redirect, OpenAPI schema. `test_smoke` FastAPI-decoupling
   check moved to a subprocess (session-pollution-proof). Suite: 163 pass.
 - README: added "Running the backend API" (`scripts/build_all.py` then `uvicorn`).
+
+## Step 20 — Search
+- `RecommenderService.search()` — three modes: `title` (DB-style substring on the title),
+  `semantic` (TF-IDF `query_scores` content ranking over all 295 cases), `hybrid`
+  (`0.8·semantic + 0.2·title-hit`). Year / split filters, pagination, per-hit `snippet`
+  (the sentence with the most query-term hits) and `title_match` flag.
+- `backend/app/services/repository.py` — `facets()`: year-decade histogram + split counts.
+- `backend/app/routers/search.py` — `GET /api/search` (q, mode, year_min/max, split,
+  limit, offset, with_facets) and `GET /api/search/facets`.
+- `backend/app/schemas/models.py` — `SearchHit`, `SearchResponse`.
+- Qualitative: `q="medical negligence"` → Martin D'Souza / Kusum Sharma / Jacob Mathew /
+  Dr. P. B. Desai with on-point snippets; `q="bail"` (hybrid) → the bail cases;
+  facets = {1950s:54 … 2010s:34}, {validation:143, test:153}.
+- "Recommend from a search result" needs no new endpoint — the hit's `doc_id` goes to
+  `GET /api/recommend/case/{doc_id}`.
+- `tests/test_api.py` — +6 search tests (semantic ranking, title-mode filter, year filter
+  + facets, facets endpoint, pagination, invalid-mode 422). Suite: 169 pass.

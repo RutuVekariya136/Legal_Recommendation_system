@@ -96,6 +96,28 @@ class RecommendTextRequest(BaseModel):
     min_score: float = 0.0
 
 
+# -- search ----------------------------------------------------
+
+class SearchHit(BaseModel):
+    doc_id: str
+    title: Optional[str]
+    year: Optional[int]
+    splits: list[str] = []
+    score: float
+    title_match: bool = False
+    snippet: str = ""
+
+
+class SearchResponse(BaseModel):
+    query: str
+    mode: str
+    total: int
+    limit: int
+    offset: int
+    items: list[SearchHit]
+    facets: Optional[dict[str, Any]] = None
+
+
 # -- compare / explain ------------------------------------
 
 class ExplanationResponse(BaseModel):

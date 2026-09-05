@@ -115,6 +115,71 @@ class RecommenderService:
     def explain_pair(self, a: str, b: str):
         return self.explainer.explain_pair(a, b)
 
+    # -- search --------------------------------------------------
+    def search(self, query: str, *, mode: str = "semantic", year_min: Optional[int] = None,
+               year_max: Optional[int] = None, split: Optional[str] = None,
+               limit: int = 20, offset: int = 0, min_score: float = 0.02) -> dict:
+        ti = self.engine.model.text_index
+        sem = ti.query_scores(query) if mode in ("semantic", "hybrid") else {}
+        ql = query.lower().strip()
+
+        hits: list[tuple[float, str, bool]] = []
+        for doc_id in self.corpus.doc_ids:
+            doc = self.corpus[doc_id]
+            if year_min is not None and (doc.year is None or doc.year < year_min):
+                continue
+            if year_max is not None and (doc.year is None or doc.year > year_max):
+                continue
+            if split is not None and split not in getattr(doc, "splits", ()):
+                continue
+
+            title_hit = bool(doc.title and ql in doc.title.lower())
+            if mode == "title":
+                if not title_hit:
+                    continue
+                score = 1.0
+            elif mode == "semantic":
+                score = sem.get(doc_id, 0.0)
+                if score < min_score:
+                    continue
+            else:  # hybrid
+                score = 0.8 * sem.get(doc_id, 0.0) + (0.2 if title_hit else 0.0)
+                if score < min_score and not title_hit:
+                    continue
+            hits.append((round(score, 4), doc_id, title_hit))
+
+        hits.sort(key=lambda h: -h[0])
+        page = hits[offset:offset + limit]
+        items = [
+            {
+                "doc_id": doc_id,
+                "title": self.corpus[doc_id].title,
+                "year": self.corpus[doc_id].year,
+                "splits": list(getattr(self.corpus[doc_id], "splits", ())),
+                "score": score,
+                "title_match": title_hit,
+                "snippet": self._snippet(doc_id, ql),
+            }
+            for score, doc_id, title_hit in page
+        ]
+        return {"query": query, "mode": mode, "total": len(hits),
+                "limit": limit, "offset": offset, "items": items}
+
+    def _snippet(self, doc_id: str, query_lower: str, *, width: int = 240) -> str:
+        import re
+
+        text = re.sub(r"\s+", " ", self.corpus.text(doc_id)).strip()
+        terms = [t for t in re.findall(r"[a-z]{3,}", query_lower)]
+        best_i, best_hits = 0, -1
+        sentences = re.split(r"(?<=[.!?]) ", text[:8000])
+        for i, s in enumerate(sentences):
+            sl = s.lower()
+            h = sum(sl.count(t) for t in terms)
+            if h > best_hits:
+                best_hits, best_i = h, i
+        snip = sentences[best_i] if sentences else text
+        return (snip[:width] + "…") if len(snip) > width else snip
+
     def explain_text(self, text: str, target: str, *, year: Optional[int] = None):
         return self.explainer.explain_text(text, target, year=year)
 

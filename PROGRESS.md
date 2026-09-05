@@ -18,7 +18,7 @@
 [✓] 14. Explainability          (explainability.py: SimilarityExplanation + contribution attribution + labelled shared statutes/citations; explain.py; 144 tests)
 [✓] 17. Database                (config.py + database.py + models/ + repository.py + init_db.py; 295 cases loaded; 151 tests)
 [✓] 18. FastAPI Backend         (main.py + RecommenderService + schemas + routers health/stats/cases/recommend/compare; build_all.py; 163 tests)
-[ ] 20. Search
+[✓] 20. Search                  (search.py: title/semantic/hybrid modes + facets; 169 tests)
 [ ] 21. Upload Workflow
 [ ] 19. React Frontend
 [ ] 22. Evaluation

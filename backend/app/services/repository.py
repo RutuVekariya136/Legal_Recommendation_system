@@ -62,6 +62,24 @@ def list_cases(db: Session, *, q: Optional[str] = None, year_min: Optional[int] 
     return list(rows), int(total or 0)
 
 
+def facets(db: Session) -> dict:
+    """Year-decade histogram + split counts over the whole corpus."""
+    rows = db.execute(select(Case.year, Case.splits)).all()
+    by_decade: dict[str, int] = {}
+    splits: dict[str, int] = {}
+    for year, sp in rows:
+        if year:
+            key = f"{(year // 10) * 10}s"
+            by_decade[key] = by_decade.get(key, 0) + 1
+        for s in (sp or []):
+            splits[s] = splits.get(s, 0) + 1
+    return {
+        "total": len(rows),
+        "years": dict(sorted(by_decade.items())),
+        "splits": dict(sorted(splits.items())),
+    }
+
+
 def case_stats(db: Session) -> dict:
     total = db.scalar(select(func.count(Case.id))) or 0
     with_title = db.scalar(select(func.count(Case.id)).where(Case.has_title.is_(True))) or 0
