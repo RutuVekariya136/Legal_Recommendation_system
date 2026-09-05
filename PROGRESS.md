@@ -11,18 +11,20 @@
 [✓] 8. Text Similarity          (text_similarity.py: TF-IDF/Doc2Vec/SBERT pluggable + index; generate_embeddings.py; 90 tests. NOTE: test-split text corr ~0 — flagged for Step 22)
 [✓] 9. Network Construction     (network_model.py: PCNet 24 edges / Hier-SPCNet 3108 nodes 6725 edges + ICF; build_graph.py; 98 tests)
 [✓] 10. Network Embedding       (network_embedding.py: node2vec + metapath2vec via Word2Vec on walks; generate_network_embeddings.py; 106 tests)
-[ ] 11. Network Similarity
+# --- MVP critical path (doing these first) ---
+[✓] 11. Network Similarity      (network_similarity.py: embedding + ICF statute/citation overlap + breakdown; 116 tests)
 [ ] 12. Hybrid Similarity
 [ ] 13. Recommendation Engine
 [ ] 14. Explainability
-[ ] 15. Case Comparison
-[ ] 16. Citation Graph
 [ ] 17. Database
 [ ] 18. FastAPI Backend
-[ ] 19. React Frontend
 [ ] 20. Search
 [ ] 21. Upload Workflow
+[ ] 19. React Frontend
 [ ] 22. Evaluation
+# --- optional / polish (after MVP) ---
+[ ] 15. Case Comparison
+[ ] 16. Citation Graph
 [ ] 23. Testing
 [ ] 24. Optimization
 [ ] 25. Documentation

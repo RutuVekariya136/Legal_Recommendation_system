@@ -259,3 +259,31 @@
 - `tests/test_network_embedding.py` — 8 tests (walk reproducibility, metapath schema
   adherence, index shapes + isolated-case tracking, cluster separation, self/missing
   exclusion, save/load). Suite: 106 pass.
+
+## Step 11 — Network Similarity
+- Reprioritised remaining work (PROGRESS.md): MVP path = 11→12→13→14→17→18→20→21→19→22,
+  then optional 15/16/23/24/25/26.
+- `backend/app/ml/network_similarity.py` — combines the Step 10 embedding with a
+  structural feature store into a `network_score(a,b)` + explanation breakdown. No
+  FastAPI/DB deps.
+  * `build_feature_store()` — per doc: resolved cited doc_ids, normalised raw citations,
+    Act ids, section keys (reuses Steps 6 & 7).
+  * `compute_statute_icf()` — IDF over the case corpus for Act/section overlap weighting.
+  * Two scoring methods: `"embedding"` (base-paper signal: Hier-SPCNet cosine only) and
+    `"blend"` (OURS: 0.60·embedding + 0.35·ICF-weighted statute Jaccard + 0.05·citation
+    Jaccard, weights configurable via `BlendWeights`).
+  * `NetworkSimilarityBreakdown` — network/embedding/statute-overlap/citation-overlap
+    scores + shared Acts (with ICF), shared sections (with ICF), shared citation doc_ids,
+    shared raw citations, co-citation count. This is what Step 14 explainability consumes.
+  * `NetworkSimilarityIndex` — `similarity`, `breakdown`, `most_similar`, `save`/`load`
+    (`feature_store.json`).
+- `scripts/build_network_similarity.py` — `--method`, `--emb-method`, `--evaluate`.
+- Real corpus, network sanity correlation (NOT hybrid eval — Step 22):
+  | method    | validation (n=100)          | test (n=90)                  |
+  |-----------|-----------------------------|------------------------------|
+  | embedding | Pearson +0.346 / Spearman +0.444 | Pearson -0.043 / Spearman -0.052 |
+  | blend     | Pearson +0.373 / Spearman +0.476 | Pearson -0.045 / Spearman -0.047 |
+  Blending the statute overlap in nudges validation up (Spearman +0.03); test still ~0.
+- `tests/test_network_similarity.py` — 10 tests (jaccard / weighted-jaccard / ICF,
+  embedding vs blend method, breakdown lists, score bounds, most_similar ordering,
+  save/load, real corpus). Suite: 116 pass.
