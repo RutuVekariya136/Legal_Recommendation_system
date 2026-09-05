@@ -41,3 +41,27 @@
 - Added `.editorconfig` and `.gitattributes` (`data/raw/** -text` keeps the judgment
   text byte-exact).
 - `.gitkeep` placeholders for empty tree dirs (data/*, notebooks/, frontend/src/*).
+
+## Step 3 — Dataset Setup
+- `backend/app/utils/paths.py` — env-driven path resolution (DATA_RAW_DIR etc., repo-root
+  relative), so a bigger corpus is swapped via env, not code edits.
+- `backend/app/utils/dataset.py` — corpus loader, no FastAPI/ML deps:
+  `CaseDocument` (lazy cached text/title, sha1), `ExpertPair`, `Corpus` (accessors +
+  `check_integrity()`), `load_corpus()`, `load_expert_pairs()`, `parse_year()`,
+  `extract_title()`.
+- Verified against real data (recorded in the module docstring):
+  * one byte-identical filename (`2011_I_16`) in both splits ⇒ **295 unique documents**,
+    that doc belongs to both splits.
+  * 100% referential integrity — every doc_id in each split's `similarity_scores.csv`
+    resolves to a document in that same split.
+  * 235/295 docs have a party-style title line; 60 have `title=None` (surfaced, not hidden).
+- `scripts/ingest_data.py` — loads + validates + prints report (per-split counts, score
+  stats, docs-by-decade, title coverage, length stats) and writes
+  `data/processed/corpus_manifest.json` (per-doc: splits, year, title, char_len, sha1).
+  `--check` validates only. Ran clean, exit 0.
+- Score stats (live from data, NOT an evaluation result): validation 100 pairs
+  min 0.0 / max 0.97 / mean 0.466; test 90 pairs min 0.15 / max 0.90 / mean 0.507.
+  Corpus: 1953–2018, 9.58M chars total, median doc 23.9k chars.
+- `tests/test_dataset.py` — 12 tests (parse_year, extract_title, 295 uniques, overlap
+  splits, per-split counts, referential integrity, title coverage). Total suite: 20 pass.
+- `data/processed/corpus_manifest.json` is git-ignored (regenerable via the script).
