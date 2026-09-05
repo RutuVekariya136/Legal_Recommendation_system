@@ -48,3 +48,37 @@ def recommend_case(
         k=result.k, n_candidates=result.n_candidates, n_filtered_out=result.n_filtered_out,
         run_id=run_id, results=_to_items(result),
     )
+
+
+@router.post("/upload/{upload_id}", response_model=RecommendResponse)
+def recommend_upload(
+    upload_id: str,
+    k: int = Query(10, ge=1, le=50),
+    year_min: int | None = None,
+    year_max: int | None = None,
+    min_score: float = Query(0.0, ge=0.0, le=1.0),
+    save: bool = Query(True),
+    db: Session = Depends(get_db),
+    svc: RecommenderService = Depends(get_service),
+) -> RecommendResponse:
+    doc = repo.get_upload(db, upload_id)
+    if doc is None:
+        raise HTTPException(404, f"upload {upload_id!r} not found")
+    filters = Filters(year_min=year_min, year_max=year_max, min_hybrid_score=min_score)
+    result = svc.recommend_text(doc.raw_text, k=k, year=doc.year_hint, filters=filters)
+
+    run_id = None
+    if save:
+        run = repo.record_run(
+            db, query_type="upload", method=result.method, top_k=k,
+            params={"year_min": year_min, "year_max": year_max, "min_score": min_score,
+                    "filename": doc.filename},
+            results=result.results, query_upload_id=upload_id,
+        )
+        run_id = run.id
+
+    return RecommendResponse(
+        query=doc.filename, query_in_corpus=False, method=result.method, k=result.k,
+        n_candidates=result.n_candidates, n_filtered_out=result.n_filtered_out,
+        run_id=run_id, results=_to_items(result),
+    )

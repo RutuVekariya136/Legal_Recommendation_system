@@ -206,6 +206,84 @@ def test_search_invalid_mode_422(client):
     assert client.get("/api/search", params={"q": "x", "mode": "fuzzy"}).status_code == 422
 
 
+# -- upload workflow --------------------------------------
+
+_UPLOAD_TEXT = (
+    "IN THE SUPREME COURT OF INDIA\n"
+    "E. F. Rao v State\n\n"
+    "1. This appeal concerns s. 302 of the Indian Penal Code and the appreciation "
+    "of circumstantial evidence in a murder trial before the Sessions Court.\n"
+    "2. The accused was convicted; the question is whether the chain of evidence is complete.\n"
+)
+
+
+def _pdf_bytes(text: str) -> bytes:
+    import pymupdf
+
+    doc = pymupdf.open()
+    rect = pymupdf.Rect(40, 40, 555, 800)
+    for i in range(0, len(text), 1500):
+        doc.new_page().insert_textbox(rect, text[i:i + 1500], fontsize=10)
+    out = doc.tobytes()
+    doc.close()
+    return out
+
+
+def test_upload_txt_then_recommend_and_compare(client):
+    up = client.post("/api/upload",
+                     files={"file": ("efrao.txt", _UPLOAD_TEXT.encode(), "text/plain")},
+                     data={"year": "2015"})
+    assert up.status_code == 201
+    j = up.json()
+    assert j["source_type"] == "txt" and j["year_hint"] == 2015 and j["char_count"] > 0
+    uid = j["id"]
+
+    assert client.get(f"/api/upload/{uid}").json()["id"] == uid
+    assert _UPLOAD_TEXT[:20] in client.get(f"/api/upload/{uid}/text").json()["text"]
+
+    rec = client.post(f"/api/recommend/upload/{uid}", params={"k": 2}).json()
+    assert rec["query_in_corpus"] is False and rec["run_id"]
+    assert rec["results"][0]["doc_id"] in {"a", "b"}  # the two IPC-302 cases
+
+    cmp = client.get(f"/api/compare/upload/{uid}", params={"target": "a"}).json()
+    assert cmp["query_in_corpus"] is False
+    assert any(s["section_number"] == "302" for s in cmp["shared_statutes"])
+
+
+def test_upload_pdf(client):
+    up = client.post("/api/upload",
+                     files={"file": ("efrao.pdf", _pdf_bytes(_UPLOAD_TEXT), "application/pdf")})
+    assert up.status_code == 201 and up.json()["source_type"] == "pdf"
+    assert up.json()["page_count"] >= 1
+
+
+def test_upload_rejects_bad_extension(client):
+    r = client.post("/api/upload",
+                    files={"file": ("x.docx", b"PK\x03\x04stuff", "application/octet-stream")})
+    assert r.status_code == 422
+
+
+def test_upload_rejects_fake_pdf(client):
+    r = client.post("/api/upload",
+                    files={"file": ("x.pdf", b"not really a pdf", "application/pdf")})
+    assert r.status_code == 422
+
+
+def test_upload_rejects_empty(client):
+    r = client.post("/api/upload", files={"file": ("x.txt", b"", "text/plain")})
+    assert r.status_code == 422
+
+
+def test_recommend_upload_unknown_404(client):
+    assert client.post("/api/recommend/upload/nope").status_code == 404
+
+
+def test_compare_upload_unknown_target_404(client):
+    up = client.post("/api/upload",
+                     files={"file": ("z.txt", _UPLOAD_TEXT.encode(), "text/plain")}).json()
+    assert client.get(f"/api/compare/upload/{up['id']}", params={"target": "zzz"}).status_code == 404
+
+
 # -- misc ----------------------------------------------------
 
 def test_root_redirects_to_docs(client):

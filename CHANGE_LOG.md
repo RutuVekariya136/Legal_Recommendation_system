@@ -441,3 +441,21 @@
   `GET /api/recommend/case/{doc_id}`.
 - `tests/test_api.py` — +6 search tests (semantic ranking, title-mode filter, year filter
   + facets, facets endpoint, pagination, invalid-mode 422). Suite: 169 pass.
+
+## Step 21 — Upload Workflow
+- `backend/app/routers/upload.py` — `POST /api/upload` (multipart PDF/txt + optional
+  `year`): extension + `%PDF-` magic + size (`upload_max_bytes`, 20 MB) + empty checks,
+  then `extract_text()` → `UploadedDocument` row → 201 with id / char_count / page_count /
+  `needs_ocr` / warnings / preview. `GET /api/upload/{id}` and `/{id}/text`.
+- `backend/app/routers/recommend.py` — `POST /api/recommend/upload/{id}`: runs
+  `recommend_for_text` on the stored upload (uses `year_hint`), records a
+  `RecommendationRun` (`query_type="upload"`, `query_upload_id`).
+- `backend/app/routers/compare.py` — `GET /api/compare/upload/{id}?target=`:
+  `explain_text` for the upload vs a corpus case.
+- `backend/app/schemas/models.py` — `UploadResponse`.
+- Manual check: upload a generated 24-page PDF of Kusum Sharma → `POST
+  /recommend/upload/{id}` returns Kusum Sharma (1.0), Jacob Mathew, Dr. P. B. Desai,
+  Martin D'Souza; `GET /compare/upload/{id}?target=2005_S_628` → hybrid 0.78, shared
+  authorities Bolam / Hunter v Hanley / Hucks v Cole.
+- `tests/test_api.py` — +7 upload tests (txt round-trip → recommend + compare, pdf,
+  bad extension / fake pdf / empty → 422, unknown upload / target → 404). Suite: 176 pass.

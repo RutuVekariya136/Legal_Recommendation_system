@@ -96,6 +96,21 @@ class RecommendTextRequest(BaseModel):
     min_score: float = 0.0
 
 
+# -- upload ----------------------------------------------------
+
+class UploadResponse(BaseModel):
+    id: str
+    filename: str
+    source_type: str
+    char_count: int
+    page_count: Optional[int] = None
+    needs_ocr: bool = False
+    warnings: list[str] = []
+    year_hint: Optional[int] = None
+    created_at: Optional[str] = None
+    preview: str = ""
+
+
 # -- search ----------------------------------------------------
 
 class SearchHit(BaseModel):
