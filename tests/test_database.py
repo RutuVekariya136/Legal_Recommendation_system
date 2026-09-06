@@ -28,6 +28,14 @@ def test_tables_created(db):
             "recommendation_results"} <= names
 
 
+def test_make_engine_handles_postgres_url_without_connecting():
+    # building the Engine must not require a live server, and must not pass the
+    # sqlite-only check_same_thread arg
+    eng = make_engine("postgresql+psycopg2://u:p@localhost:5432/db")
+    assert eng.dialect.name == "postgresql"
+    assert "check_same_thread" not in eng.pool._dialect.create_connect_args(eng.url)[1]
+
+
 # -- corpus upsert ---------------------------------------------
 
 class _Doc:

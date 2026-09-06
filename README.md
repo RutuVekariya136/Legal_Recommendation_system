@@ -120,8 +120,17 @@ Then the demo walkthrough in [DEMO.md](DEMO.md).
 
 ## Scaling to a real corpus
 
-The demo runs on 296 documents. To run on tens of thousands of real Indian
-judgments (ILDC, a folder of PDFs, a JSONL export), see **[SCALING.md](SCALING.md)**:
+The demo runs on 296 documents. **[SCALING.md](SCALING.md)** has the full plan; the
+scaling backbone is in place:
+
+- **bulk ingest** — `scripts/ingest_bulk.py --source dir|jsonl|hf` (the `hf` path targets
+  ILDC / IL-TUR); documents live in the DB (`Case.text`), `CORPUS_SOURCE=db` merges
+  base + bulk everywhere.
+- **ANN retrieval** — `app.ml.vector_index` (FAISS-HNSW or exact numpy) + `build_index.py`;
+  the recommender scores a candidate pool, not the whole corpus.
+- **PostgreSQL** — `docker compose up -d db`, `pip install -r backend/requirements-pg.txt`,
+  `alembic upgrade head`; `DATABASE_URL` is the only switch.
+- **citation blocking** — an inverted title index keeps fuzzy resolution ~linear in mentions.
 
 ```bash
 python scripts/ingest_bulk.py --source hf --hf-dataset Exploration-Lab/IL-TUR \

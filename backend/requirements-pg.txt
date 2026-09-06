@@ -1,0 +1,7 @@
+# PostgreSQL support (scale mode). SQLite is the default and needs none of this.
+#   docker compose up -d db
+#   pip install -r backend/requirements-pg.txt
+#   DATABASE_URL=postgresql+psycopg2://lcs:lcs@localhost:5432/lcs alembic upgrade head
+
+psycopg2-binary>=2.9,<3.0
+alembic>=1.13,<2.0

@@ -630,3 +630,24 @@ ARCHITECTURE.md, EVALUATION.md, DEMO.md.
   in mentions at 10k+ docs.
 - `tests/test_citation_extraction.py` +3 (postings built, empty-block fast reject,
   place-name-only rejection). Suite: 200 backend tests.
+
+### P3 — PostgreSQL path
+- `docker-compose.yml` — Postgres 16 with a healthcheck and a named volume.
+- `backend/requirements-pg.txt` — `psycopg2-binary`, `alembic`.
+- Alembic wired to the app: `alembic.ini` + `backend/alembic/env.py` reads
+  `DATABASE_URL` from settings and `Base.metadata` from the models; `render_as_batch`
+  for SQLite-safe ALTERs. Initial migration `40cc6158e5fc_initial_schema` checked in;
+  `alembic upgrade head` verified on a fresh SQLite file.
+- `scripts/init_db.py` prints a "use alembic" hint for non-SQLite URLs (still loads the
+  corpus). SQLite dev keeps zero-setup `create_all`.
+- `tests/test_database.py` +1 (`make_engine` builds a Postgres Engine without a live
+  server and without the sqlite-only connect arg).
+
+### P7 — legal-domain embeddings (plumbing)
+- `SbertEmbedder` docstring + `generate_embeddings.py --sbert-model` — the model name
+  (`law-ai/InLegalBERT`, `law-ai/InCaseLawBERT`, or the default MiniLM) now flows through.
+  Running it still needs `requirements-ml.txt` + a GPU + the model download.
+
+**Phase 2 status:** P1 (bulk corpus) · P2 (ANN retrieval) · P3 (Postgres) · P4 (citation
+blocking) · P7-plumbing done. P5 (graph backend) and P6 (India Code hierarchy) remain —
+both only matter above ~50k documents. **201 backend + 10 frontend tests.**

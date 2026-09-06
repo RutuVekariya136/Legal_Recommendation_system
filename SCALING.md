@@ -42,6 +42,22 @@ aggregators' *access terms* are the constraint. Clean research route:
 demo lacks — see `EVALUATION.md`), the Indian Kanoon API gives resolved citations
 instead of fuzzy title matching.
 
+## PostgreSQL (P3)
+
+```bash
+docker compose up -d db
+pip install -r backend/requirements-pg.txt
+export DATABASE_URL=postgresql+psycopg2://lcs:lcs@localhost:5432/lcs
+alembic upgrade head                      # create the schema
+CORPUS_SOURCE=db python scripts/init_db.py --drop   # load base 296
+python scripts/ingest_bulk.py --source hf --hf-dataset ... --corpus ildc
+CORPUS_SOURCE=db python scripts/build_all.py
+CORPUS_SOURCE=db uvicorn app.main:app --app-dir backend
+```
+
+After changing a model, regenerate the migration: `alembic revision --autogenerate -m "..."`.
+SQLite dev still works with zero setup (`create_all`).
+
 ## Ingesting
 
 ```bash
@@ -67,11 +83,11 @@ Dedups on `doc_id` and on text SHA-1. Batched inserts.
 |---|---|---|
 | **P1 ✅** | bulk ingest + DB-backed corpus (`CORPUS_SOURCE=db`) | get real data in |
 | **P2 ✅** | ANN index (`app.ml.vector_index`, `scripts/build_index.py`, `data/indexes/`) — FAISS-HNSW if `faiss-cpu` is installed, exact numpy fallback otherwise. The recommendation engine ANN-retrieves a candidate pool (text ∪ network, default 300) and hybrid-re-ranks only that pool. | brute-force = O(N) hybrid evaluations per query (≈10 s at 35k); ANN keeps it ≈100 ms. Verified top-1 agreement 40/40 vs brute force on the demo corpus. |
-| **P3** | PostgreSQL + `docker-compose` + Alembic migrations | SQLite won't hold the text or the write load; models are already portable (connection-string change) |
+| **P3 ✅** | `docker-compose.yml` (Postgres 16), `backend/requirements-pg.txt` (`psycopg2-binary`, `alembic`), Alembic wired to the app settings + models (`alembic upgrade head`), initial migration checked in. `make_engine` handles any URL. | SQLite won't hold the text or the write load; the switch is now a `DATABASE_URL` change + one migrate |
 | **P4 ✅** | citation-match **blocking** — a `token -> doc_ids` inverted index over distinctive title tokens; a query is only fuzzy-compared against titles that share a token, and a resolution must share a token outside a place-name / common-surname stop set. | the old fuzzy match scanned every title per mention (O(mentions × corpus)); blocking makes it roughly linear in mentions |
 | **P5** | graph backend: NetworkX → `scipy.sparse` / `igraph`, walks via `pecanpy` | ~35k cases + statute layer ≈ 200k nodes; NetworkX walks are the bottleneck |
 | **P6** | real statute hierarchy parsed from **India Code** (indiacode.nic.in) | replace the curated 23-Act sample |
-| **P7** | legal-domain embeddings: `law-ai/InLegalBERT` / `InCaseLawBERT` (GPU) | better semantic signal than TF-IDF / generic SBERT |
+| **P7 ✅ (plumbing)** | `generate_embeddings.py --method sbert --sbert-model law-ai/InLegalBERT` flows through to `SbertEmbedder`. Actually running it needs `requirements-ml.txt` + a GPU + the model download. | better semantic signal than TF-IDF / generic SBERT |
 
 ## Hardware
 

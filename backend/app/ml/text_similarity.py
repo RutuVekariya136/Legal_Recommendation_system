@@ -194,6 +194,16 @@ class Doc2VecEmbedder(BaseTextEmbedder):
 # --------------------------------------------------------------------------- #
 
 class SbertEmbedder(BaseTextEmbedder):
+    """Sentence-Transformer text embeddings, long docs chunked + mean-pooled.
+
+    OUR ENHANCEMENT (not in the base paper). ``model_name`` is any HuggingFace
+    model: ``all-MiniLM-L6-v2`` (default, general), or a legal-domain encoder
+    such as ``law-ai/InLegalBERT`` / ``law-ai/InCaseLawBERT`` (SentenceTransformer
+    wraps a bare BERT with a mean-pooling layer - fine for similarity). Needs
+    ``pip install -r backend/requirements-ml.txt`` and, for a corpus of any size,
+    a GPU.
+    """
+
     name = "sbert"
     provenance = "our enhancement (not in the base paper)"
 

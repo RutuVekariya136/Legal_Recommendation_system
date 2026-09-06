@@ -33,6 +33,10 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_settings()
     print(f"database: {settings.database_url_resolved}")
 
+    if not settings.is_sqlite:
+        print("note: non-SQLite database - prefer `alembic upgrade head` for the schema; "
+              "this script still creates missing tables and loads the corpus.")
+
     if args.drop:
         print("dropping all tables ...")
         Base.metadata.drop_all(engine)

@@ -1,0 +1,29 @@
+# Local PostgreSQL for scale mode. The app uses SQLite by default; point it at
+# this with:
+#   DATABASE_URL=postgresql+psycopg2://lcs:lcs@localhost:5432/lcs
+#
+#   docker compose up -d db
+#   pip install -r backend/requirements-pg.txt
+#   DATABASE_URL=postgresql+psycopg2://lcs:lcs@localhost:5432/lcs alembic upgrade head
+#   DATABASE_URL=postgresql+psycopg2://lcs:lcs@localhost:5432/lcs \
+#     CORPUS_SOURCE=db python scripts/build_all.py
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lcs
+      POSTGRES_PASSWORD: lcs
+      POSTGRES_DB: lcs
+    ports:
+      - "5432:5432"
+    volumes:
+      - lcs_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lcs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  lcs_pgdata:

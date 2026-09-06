@@ -48,13 +48,19 @@ def _evaluate(index: TextSimilarityIndex, corpus) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--method", choices=METHODS, default="tfidf")
+    parser.add_argument("--sbert-model", default=None,
+                        help="HF model for --method sbert, e.g. law-ai/InLegalBERT "
+                             "or all-MiniLM-L6-v2 (default)")
     parser.add_argument("--evaluate", action="store_true")
     parser.add_argument("--no-save", action="store_true")
     parser.add_argument("--neighbours", type=int, default=5, help="print N nearest for a sample doc")
     args = parser.parse_args(argv)
 
     corpus = load_corpus(verify=True)
-    embedder = make_embedder(args.method)
+    kw = {}
+    if args.method == "sbert" and args.sbert_model:
+        kw["model_name"] = args.sbert_model
+    embedder = make_embedder(args.method, **kw)
     print(f"method:     {embedder.name}")
     print(f"provenance: {embedder.provenance}")
     print(f"params:     {embedder.params}")
