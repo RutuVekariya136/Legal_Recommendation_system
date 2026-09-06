@@ -574,3 +574,27 @@
 
 **Project complete.** 26/26 steps. 185 backend + 10 frontend tests. See README.md,
 ARCHITECTURE.md, EVALUATION.md, DEMO.md.
+
+---
+
+## Phase 2 — scale to a real corpus
+
+### P1 — bulk ingestion + DB-backed corpus
+- `Case` model gains `corpus` (`"base"` | `"ildc"` | …) + `text` columns — the DB is
+  now the document store, not just metadata.
+- `load_corpus(source="db")` / `CORPUS_SOURCE=db` — every script and the API load *all*
+  `Case` rows (base 296 + any bulk corpus). `CaseDocument` backed by an in-memory string
+  or a file. Expert pairs still come from the CSVs and reference base docs; evaluation
+  stays on the 190-pair labelled subset.
+- `repository.bulk_insert_documents()` — batched, dedups on doc_id + text SHA-1.
+- `scripts/ingest_bulk.py` — `--source dir|jsonl|hf`; the `hf` path targets ILDC /
+  IL-TUR (`pip install datasets`). `--corpus`, `--limit`, field mappings, `--replace`.
+- `init_db.py` stores base-doc text and runs **first** in `build_all.py`.
+- Verified end-to-end at **415 docs** (296 base + 120 synthetic bulk): full pipeline
+  builds, API serves recommendations over the merged corpus, evaluation stays within
+  run-to-run noise of the 296-doc baseline.
+- `SCALING.md` — data-source table (ILDC, OpenNyAI, SCI portal, Indian Kanoon API),
+  the `CORPUS_SOURCE=db` flow, and the P2–P7 plan (FAISS, Postgres, citation blocking,
+  graph backend, India Code hierarchy, InLegalBERT).
+- `tests/test_bulk_corpus.py` — 6 tests (in-memory `CaseDocument`, dedup, db-corpus
+  merge + expert-pair integrity, empty-db error, jsonl ingest subprocess). Suite: 191.

@@ -113,8 +113,21 @@ Then the demo walkthrough in [DEMO.md](DEMO.md).
 | `recommend.py` | CLI Top-K for a case / file / text | stdout |
 | `explain.py` | CLI pairwise explanation | stdout |
 | `evaluate.py` | full benchmark + test-split diagnosis | `data/processed/evaluation_report.json` |
-| `init_db.py` | create tables + load 295 cases | `legal_case_similarity.db` |
+| `init_db.py` | create tables + load 295 cases (with text) | `legal_case_similarity.db` |
+| `ingest_bulk.py` | add a large corpus (ILDC / PDFs / JSONL) to the DB | `Case` rows |
 | `build_all.py` | all of the above, in order | everything |
+
+## Scaling to a real corpus
+
+The demo runs on 296 documents. To run on tens of thousands of real Indian
+judgments (ILDC, a folder of PDFs, a JSONL export), see **[SCALING.md](SCALING.md)**:
+
+```bash
+python scripts/ingest_bulk.py --source hf --hf-dataset Exploration-Lab/IL-TUR \
+    --hf-config cjpe --hf-split train --corpus ildc --limit 35000
+CORPUS_SOURCE=db python scripts/build_all.py
+CORPUS_SOURCE=db uvicorn app.main:app --app-dir backend
+```
 
 ### API (`/api`, full docs at `/docs`)
 

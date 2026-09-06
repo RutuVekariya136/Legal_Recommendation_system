@@ -40,9 +40,11 @@ def main(argv: list[str] | None = None) -> int:
     init_db()
     print(f"tables: {', '.join(sorted(Base.metadata.tables))}")
 
-    corpus = load_corpus(verify=True)
+    # always load the base 296 from files (they carry the expert pairs) and store
+    # their text, so CORPUS_SOURCE=db works afterwards.
+    corpus = load_corpus(source="files", verify=True)
     with session_scope() as db:
-        result = upsert_cases_from_corpus(db, corpus)
+        result = upsert_cases_from_corpus(db, corpus, corpus_name="base", store_text=True)
         stats = case_stats(db)
 
     print(f"cases upserted: +{result['created']} new / {result['updated']} updated "

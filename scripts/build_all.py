@@ -19,6 +19,7 @@ sys.path.insert(0, str(_REPO_ROOT / "backend"))
 sys.path.insert(0, str(_REPO_ROOT / "scripts"))
 
 STEPS = [
+    ("init_db",                 []),   # first: base docs + text into the DB
     ("preprocess",              ["--"]),
     ("extract_citations",       []),
     ("extract_statutes",        []),
@@ -27,7 +28,6 @@ STEPS = [
     ("generate_network_embeddings", ["--method", "metapath2vec"]),
     ("build_network_similarity", ["--method", "blend"]),
     ("build_hybrid",            ["--method", "learned", "--model", "linear"]),
-    ("init_db",                 []),
 ]
 
 

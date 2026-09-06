@@ -9,6 +9,9 @@ testpaths = ["tests"]
 # (repo root, CI, or an IDE), keeping app/ml/ runnable without the FastAPI app.
 pythonpath = ["backend"]
 addopts = "-ra -q"
+markers = [
+    "slow: tests that load the full 296-doc corpus into a DB",
+]
 filterwarnings = [
     "ignore::DeprecationWarning:pkg_resources",
     "ignore:Using `httpx` with `starlette.testclient` is deprecated",

@@ -82,19 +82,27 @@ def extract_title(text: str) -> Optional[str]:
 
 @dataclass
 class CaseDocument:
-    """One judgment document. Text is read lazily and cached on first access."""
+    """One judgment document. Backed either by a file on disk (``path``) or by an
+    in-memory string (``text_value``, used for a DB-backed corpus). Text is read
+    lazily and cached on first access."""
 
     doc_id: str
-    path: Path
+    path: Optional[Path]
     splits: tuple[str, ...]
     year: Optional[int]
+    text_value: Optional[str] = None
+    title_value: Optional[str] = None
 
     @cached_property
     def text(self) -> str:
+        if self.text_value is not None:
+            return self.text_value
         return self.path.read_text(encoding="utf-8")
 
     @cached_property
     def title(self) -> Optional[str]:
+        if self.title_value is not None:
+            return self.title_value or None
         return extract_title(self.text)
 
     @property
@@ -102,7 +110,9 @@ class CaseDocument:
         return self.title is not None
 
     def sha1(self) -> str:
-        return hashlib.sha1(self.path.read_bytes()).hexdigest()
+        if self.path is not None and self.path.is_file():
+            return hashlib.sha1(self.path.read_bytes()).hexdigest()
+        return hashlib.sha1(self.text.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -260,12 +270,29 @@ def load_expert_pairs(split: str, raw_dir: Optional[Path] = None) -> list[Expert
     return pairs
 
 
-def load_corpus(raw_dir: Optional[Path] = None, *, verify: bool = True) -> Corpus:
-    """Load the full corpus (both splits merged, keyed by unique doc_id).
+def load_corpus(raw_dir: Optional[Path] = None, *, verify: bool = True,
+                source: Optional[str] = None) -> Corpus:
+    """Load the full corpus (keyed by unique doc_id) + the expert pairs.
 
-    Set ``verify=False`` to skip the integrity check (e.g. when deliberately
-    testing against a broken fixture).
+    ``source``:
+      * ``"files"`` (default) - the 296 base-paper docs from ``data/raw/``.
+      * ``"db"`` - every ``Case`` row in the database (scale mode: base corpus +
+        any bulk-ingested corpus). Expert pairs still come from the CSVs and
+        always reference base docs.
+
+    ``source=None`` reads ``CORPUS_SOURCE`` from settings (default ``files``).
     """
+    if source is None:
+        try:
+            from app.config import get_settings
+
+            source = get_settings().corpus_source
+        except Exception:  # noqa: BLE001 - settings optional for plain-script use
+            source = "files"
+
+    if source == "db":
+        return _load_corpus_from_db(verify=verify)
+
     raw_dir = raw_dir or data_raw_dir()
     if not raw_dir.is_dir():
         raise DatasetError(f"data raw dir not found: {raw_dir}")
@@ -279,4 +306,42 @@ def load_corpus(raw_dir: Optional[Path] = None, *, verify: bool = True) -> Corpu
             raise DatasetError(
                 "dataset integrity check failed:\n  - " + "\n  - ".join(problems)
             )
+    return corpus
+
+
+def _load_corpus_from_db(*, verify: bool) -> Corpus:
+    from sqlalchemy import select
+
+    from app.database import SessionLocal
+    from app.models import Case
+
+    docs: dict[str, CaseDocument] = {}
+    with SessionLocal() as db:
+        for row in db.scalars(select(Case)):
+            if row.text is None:
+                continue  # a row without stored text (metadata only) - skip
+            docs[row.doc_id] = CaseDocument(
+                doc_id=row.doc_id, path=None, splits=tuple(row.splits or []),
+                year=row.year, text_value=row.text,
+                title_value=row.title if row.title is not None else "",
+            )
+    if not docs:
+        raise DatasetError(
+            "CORPUS_SOURCE=db but no Case rows have stored text - run "
+            "`python scripts/init_db.py` and/or `python scripts/ingest_bulk.py` first"
+        )
+    corpus = Corpus(raw_dir=data_raw_dir(), documents=docs)
+    try:
+        corpus.pairs_by_split = {s: load_expert_pairs(s) for s in SPLITS}
+    except DatasetError:
+        corpus.pairs_by_split = {s: [] for s in SPLITS}
+
+    if verify:
+        # only the expert-pair referential integrity matters here
+        missing = {
+            did for pairs in corpus.pairs_by_split.values() for p in pairs
+            for did in (p.doc_id_1, p.doc_id_2) if did not in docs
+        }
+        if missing:
+            raise DatasetError(f"db corpus missing {len(missing)} expert-pair docs, e.g. {sorted(missing)[:5]}")
     return corpus

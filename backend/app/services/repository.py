@@ -18,7 +18,8 @@ from app.models import Case, RecommendationResult, RecommendationRun, UploadedDo
 # Cases                                                                       #
 # --------------------------------------------------------------------------- #
 
-def upsert_cases_from_corpus(db: Session, corpus) -> dict:
+def upsert_cases_from_corpus(db: Session, corpus, *, corpus_name: str = "base",
+                             store_text: bool = True) -> dict:
     """Insert/update one Case row per corpus document. Idempotent."""
     existing = {c.doc_id: c for c in db.scalars(select(Case)).all()}
     created = updated = 0
@@ -26,10 +27,11 @@ def upsert_cases_from_corpus(db: Session, corpus) -> dict:
         doc = corpus[doc_id]
         text = corpus.text(doc_id)
         fields = dict(
-            title=doc.title, year=doc.year, splits=list(doc.splits),
+            corpus=corpus_name, title=doc.title, year=doc.year, splits=list(doc.splits),
             has_title=bool(doc.title), char_len=len(text),
             source_path=str(doc.path) if getattr(doc, "path", None) else None,
             sha1=doc.sha1() if hasattr(doc, "sha1") else None,
+            text=text if store_text else None,
         )
         row = existing.get(doc_id)
         if row is None:
@@ -45,6 +47,49 @@ def upsert_cases_from_corpus(db: Session, corpus) -> dict:
 
 def get_case(db: Session, doc_id: str) -> Optional[Case]:
     return db.scalar(select(Case).where(Case.doc_id == doc_id))
+
+
+def bulk_insert_documents(db: Session, rows: list[dict], *, corpus_name: str,
+                          skip_existing: bool = True, batch: int = 1000) -> dict:
+    """Insert many judgment rows. Each dict: doc_id, text, [title, year, source_path].
+    Dedups on doc_id and on sha1."""
+    import hashlib
+
+    have_ids = {r[0] for r in db.execute(select(Case.doc_id)).all()}
+    have_sha = {r[0] for r in db.execute(select(Case.sha1)).all() if r[0]}
+    inserted = skipped = 0
+    pending: list[Case] = []
+    for r in rows:
+        text = (r.get("text") or "").strip()
+        doc_id = str(r["doc_id"]).strip()
+        if not text or not doc_id:
+            skipped += 1
+            continue
+        sha = hashlib.sha1(text.encode("utf-8")).hexdigest()
+        if skip_existing and (doc_id in have_ids or sha in have_sha):
+            skipped += 1
+            continue
+        have_ids.add(doc_id)
+        have_sha.add(sha)
+        title = r.get("title")
+        pending.append(Case(
+            doc_id=doc_id, corpus=corpus_name, title=title,
+            year=r.get("year"), splits=r.get("splits") or [],
+            has_title=bool(title), char_len=len(text),
+            source_path=r.get("source_path"), sha1=sha, text=text,
+        ))
+        if len(pending) >= batch:
+            db.add_all(pending)
+            db.commit()
+            inserted += len(pending)
+            pending = []
+    if pending:
+        db.add_all(pending)
+        db.commit()
+        inserted += len(pending)
+    total = db.scalar(select(func.count(Case.id)))
+    by_corpus = dict(db.execute(select(Case.corpus, func.count(Case.id)).group_by(Case.corpus)).all())
+    return {"inserted": inserted, "skipped": skipped, "total": total, "by_corpus": by_corpus}
 
 
 def list_cases(db: Session, *, q: Optional[str] = None, year_min: Optional[int] = None,
