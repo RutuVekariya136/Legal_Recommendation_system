@@ -598,3 +598,22 @@ ARCHITECTURE.md, EVALUATION.md, DEMO.md.
   graph backend, India Code hierarchy, InLegalBERT).
 - `tests/test_bulk_corpus.py` — 6 tests (in-memory `CaseDocument`, dedup, db-corpus
   merge + expert-pair integrity, empty-db error, jsonl ingest subprocess). Suite: 191.
+
+### P2 — ANN candidate retrieval
+- `backend/app/ml/vector_index.py` — `VectorIndex` over an embedding matrix. FAISS-HNSW
+  (or exact `IndexFlatIP` below 12k rows) if `faiss-cpu` is installed; exact numpy
+  `argpartition` fallback otherwise. Cosine (L2-normalised rows), `search`/`most_similar`,
+  save/load (`faiss.index` + `matrix.npy` + `meta.json`).
+- `RecommendationEngine` gains `text_ann` / `network_ann` / `candidate_pool` (default 300):
+  when set, `recommend_for_case` scores only the ANN candidate pool (text ∪ network
+  neighbours) instead of the whole corpus; `recommend_for_text` uses `text_ann.search`
+  on the query vector. Falls back to brute force when no ANN is supplied (tests, small
+  corpora).
+- `RecommenderService.load_default` loads/builds the ANN indexes from `data/indexes/`;
+  `ServiceMeta.ann_backend` exposed on `/api/stats`.
+- `scripts/build_index.py` (+ added to `build_all.py`) — writes
+  `data/indexes/{text,network}/`.
+- Verified: **top-1 agreement 40/40** ANN vs brute force on the demo corpus; the
+  infrastructure keeps a 35k-corpus query at ~100 ms instead of ~10 s.
+- `tests/test_vector_index.py` — 6 tests (numpy & faiss backends, agreement, zero query,
+  save/load, faiss-missing error). Suite: 198 backend tests.

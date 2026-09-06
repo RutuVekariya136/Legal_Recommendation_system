@@ -110,6 +110,7 @@ Then the demo walkthrough in [DEMO.md](DEMO.md).
 | `generate_network_embeddings.py` | node2vec / metapath2vec | `data/embeddings/network_<method>/` |
 | `build_network_similarity.py` | embedding + ICF overlap feature store | `data/embeddings/network_similarity/` |
 | `build_hybrid.py` | weighted / learned combiner | `data/embeddings/hybrid/` |
+| `build_index.py` | ANN index for candidate retrieval | `data/indexes/{text,network}/` |
 | `recommend.py` | CLI Top-K for a case / file / text | stdout |
 | `explain.py` | CLI pairwise explanation | stdout |
 | `evaluate.py` | full benchmark + test-split diagnosis | `data/processed/evaluation_report.json` |

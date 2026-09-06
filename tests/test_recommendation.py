@@ -110,6 +110,17 @@ def test_unknown_case_raises(engine):
         engine.recommend_for_case("nope")
 
 
+def test_ann_candidate_pool_matches_brute_force_top_results(engine):
+    from app.ml.vector_index import build_from_index
+
+    engine.text_ann = build_from_index(engine.model.text_index, backend="numpy")
+    engine.network_ann = build_from_index(engine.model.network_index.embeddings, backend="numpy")
+    engine.candidate_pool = 3
+    res = engine.recommend_for_case("tax_1980", k=2)
+    assert res.results[0].doc_id == "tax_1995"           # same top result
+    assert res.n_candidates <= 3                          # pool, not the whole corpus
+
+
 # -- recommend_for_text ----------------------------------------
 
 def test_recommend_for_text_uploaded_case(engine):

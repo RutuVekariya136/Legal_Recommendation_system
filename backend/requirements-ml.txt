@@ -1,11 +1,13 @@
 # ---------------------------------------------------------------------------
-# OPTIONAL heavy ML dependencies for OUR OWN enhancements (not the base paper).
+# OPTIONAL ML dependencies for OUR OWN enhancements (not the base paper).
 #
 #   * sentence-transformers -> Sentence-BERT text embeddings (our addition)
-#   * faiss-cpu             -> fast approximate Top-K search (our addition)
+#   * faiss-cpu             -> ANN candidate retrieval (Phase 2 P2). Without it
+#                             the VectorIndex uses an exact numpy fallback -
+#                             correct, just linear. Install it once the corpus
+#                             is large (tens of thousands of docs).
 #
-# Do NOT install these during Step 1. They are large (torch is ~200 MB+) and
-# are only needed from the Text Similarity / Build Index steps onward.
+# Do NOT install these during Step 1. sentence-transformers is large (torch ~200 MB+).
 # Install them then, into the SAME virtual environment:
 #
 #   (Windows)  .venv\Scripts\activate

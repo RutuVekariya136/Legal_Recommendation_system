@@ -20,8 +20,9 @@ from app.ml.network_model import build_hier_spcnet, from_node_link
 from app.ml.network_similarity import NetworkSimilarityIndex
 from app.ml.recommendation import Filters, RecommendationEngine
 from app.ml.text_similarity import TextSimilarityIndex, TfidfEmbedder
+from app.ml.vector_index import VectorIndex, build_from_index
 from app.utils.dataset import load_corpus
-from app.utils.paths import data_embeddings_dir, data_graphs_dir
+from app.utils.paths import data_embeddings_dir, data_graphs_dir, data_indexes_dir
 
 
 @dataclass
@@ -32,6 +33,7 @@ class ServiceMeta:
     n_cases: int
     rebuilt: list[str] = field(default_factory=list)
     load_seconds: float = 0.0
+    ann_backend: str = "numpy"
 
 
 class RecommenderService:
@@ -95,14 +97,32 @@ class RecommenderService:
             if isinstance(combiner, LearnedCombiner):
                 hybrid.fit_learned(corpus, split="validation")
 
-        engine = RecommendationEngine(corpus, hybrid)
+        # ANN indexes for candidate generation (Phase 2, P2). Small corpora fall
+        # back to exact flat search; large ones use FAISS-HNSW if faiss-cpu is present.
+        idx_dir = data_indexes_dir()
+        text_ann = cls._load_or_build_ann(idx_dir / "text", text_index)
+        net_ann = cls._load_or_build_ann(idx_dir / "network", net_emb)
+
+        engine = RecommendationEngine(corpus, hybrid, text_ann=text_ann, network_ann=net_ann)
         explainer = Explainer(corpus, hybrid, title_index=engine.title_index)
         meta = ServiceMeta(
             text_method=text_index.method, network_method=net_emb.method,
             hybrid_method=hybrid.combiner.name, n_cases=len(corpus),
             rebuilt=rebuilt, load_seconds=round(time.time() - t0, 1),
         )
+        meta.ann_backend = text_ann.backend
         return cls(corpus, engine, explainer, meta)
+
+    @staticmethod
+    def _load_or_build_ann(directory, sim_index) -> VectorIndex:
+        if (directory / "meta.json").is_file():
+            try:
+                loaded = VectorIndex.load(directory)
+                if loaded.doc_ids == list(sim_index.doc_ids):
+                    return loaded
+            except Exception:  # noqa: BLE001 - stale/corrupt index -> rebuild
+                pass
+        return build_from_index(sim_index)
 
     # -- operations ----------------------------------------------
     def recommend_case(self, doc_id: str, *, k: int, filters: Optional[Filters] = None):

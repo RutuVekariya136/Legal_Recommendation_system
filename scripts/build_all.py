@@ -28,6 +28,7 @@ STEPS = [
     ("generate_network_embeddings", ["--method", "metapath2vec"]),
     ("build_network_similarity", ["--method", "blend"]),
     ("build_hybrid",            ["--method", "learned", "--model", "linear"]),
+    ("build_index",             []),
 ]
 
 

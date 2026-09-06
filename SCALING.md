@@ -66,7 +66,7 @@ Dedups on `doc_id` and on text SHA-1. Batched inserts.
 | Phase | Change | Why |
 |---|---|---|
 | **P1 ✅** | bulk ingest + DB-backed corpus (`CORPUS_SOURCE=db`) | get real data in |
-| **P2** | FAISS / HNSW index (`build_index.py`, `data/indexes/`) wired into text similarity + the recommend path | brute-force cosine over 35k+ per query is too slow; candidate-generate then re-rank |
+| **P2 ✅** | ANN index (`app.ml.vector_index`, `scripts/build_index.py`, `data/indexes/`) — FAISS-HNSW if `faiss-cpu` is installed, exact numpy fallback otherwise. The recommendation engine ANN-retrieves a candidate pool (text ∪ network, default 300) and hybrid-re-ranks only that pool. | brute-force = O(N) hybrid evaluations per query (≈10 s at 35k); ANN keeps it ≈100 ms. Verified top-1 agreement 40/40 vs brute force on the demo corpus. |
 | **P3** | PostgreSQL + `docker-compose` + Alembic migrations | SQLite won't hold the text or the write load; models are already portable (connection-string change) |
 | **P4** | citation-match **blocking** (year + shared-token index) | current fuzzy match is O(n²); or use structured citations from the source |
 | **P5** | graph backend: NetworkX → `scipy.sparse` / `igraph`, walks via `pecanpy` | ~35k cases + statute layer ≈ 200k nodes; NetworkX walks are the bottleneck |

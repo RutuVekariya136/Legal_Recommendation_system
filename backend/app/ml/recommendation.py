@@ -108,15 +108,33 @@ def _rationale(text_score: float, bd_acts: list[dict], bd_secs: list[dict],
 
 class RecommendationEngine:
     def __init__(self, corpus, hybrid_model: HybridSimilarityModel, *,
-                 title_index: Optional[CorpusTitleIndex] = None, hierarchy=None):
+                 title_index: Optional[CorpusTitleIndex] = None, hierarchy=None,
+                 text_ann=None, network_ann=None, candidate_pool: int = 300):
         self.corpus = corpus
         self.model = hybrid_model
         self.hierarchy = hierarchy or load_hierarchy()
         self.title_index = title_index or CorpusTitleIndex.from_corpus(corpus)
+        # Optional ANN indexes: when present, only a candidate pool is hybrid-scored
+        # instead of the whole corpus (Phase 2, P2).
+        self.text_ann = text_ann
+        self.network_ann = network_ann
+        self.candidate_pool = candidate_pool
 
     @property
     def method(self) -> str:
         return self.model.combiner.name
+
+    def _candidate_ids(self, doc_id: str) -> Optional[list[str]]:
+        """ANN candidate pool for a corpus query, or None to score everything."""
+        if not self.text_ann:
+            return None
+        pool: set[str] = set()
+        if self.text_ann.has(doc_id):
+            pool.update(n.doc_id for n in self.text_ann.most_similar(doc_id, self.candidate_pool))
+        if self.network_ann and self.network_ann.has(doc_id):
+            pool.update(n.doc_id for n in self.network_ann.most_similar(doc_id, self.candidate_pool))
+        pool.discard(doc_id)
+        return sorted(pool)
 
     # -- indexed corpus case --------------------------------------
     def recommend_for_case(self, doc_id: str, *, k: int = 10,
@@ -127,9 +145,12 @@ class RecommendationEngine:
         filters.exclude_ids = set(filters.exclude_ids) | {doc_id}
 
         text_scores = self.model.text_index.scores_for(doc_id)
+        candidates = self._candidate_ids(doc_id) or self.corpus.doc_ids
         scored: list[tuple[float, str]] = []
         n_filtered = 0
-        for other in self.corpus.doc_ids:
+        for other in candidates:
+            if other == doc_id or other not in self.corpus:
+                continue
             if not filters.allows(other, self.corpus[other].year):
                 n_filtered += 1
                 continue
@@ -173,9 +194,19 @@ class RecommendationEngine:
                                      hierarchy=self.hierarchy, year=year)
         text_scores = self.model.text_index.query_scores(text)
 
+        candidates = self.corpus.doc_ids
+        if self.text_ann is not None and self.model.text_index.embedder is not None:
+            from app.ml.preprocessing import preprocess_text
+
+            pp = preprocess_text(text)
+            qvec = self.model.text_index.embedder.embed_text(pp.tokens, pp.clean_text)
+            candidates = [n.doc_id for n in self.text_ann.search(qvec, self.candidate_pool)]
+
         scored: list[tuple[float, str, float]] = []
         n_filtered = 0
-        for other in self.corpus.doc_ids:
+        for other in candidates:
+            if other not in self.corpus:
+                continue
             if not filters.allows(other, self.corpus[other].year):
                 n_filtered += 1
                 continue
