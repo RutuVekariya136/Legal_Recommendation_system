@@ -617,3 +617,16 @@ ARCHITECTURE.md, EVALUATION.md, DEMO.md.
   infrastructure keeps a 35k-corpus query at ~100 ms instead of ~10 s.
 - `tests/test_vector_index.py` — 6 tests (numpy & faiss backends, agreement, zero query,
   save/load, faiss-missing error). Suite: 198 backend tests.
+
+### P4 — citation-match blocking
+- `CorpusTitleIndex` builds a `token -> doc_ids` inverted index over the distinctive
+  tokens of each normalised cause-title. `resolve()` now fuzzy-compares only the titles
+  that share ≥1 distinctive token with the query (was: every title, per mention).
+- Added `_WEAK_TITLE_TOKENS` (place names + the ~20 most common Indian surnames): a
+  resolution must share a token *outside* that set — kills "X Singh v State of Punjab" ↔
+  "Y Singh v State of Punjab" style false positives that blocking alone surfaced.
+- Real corpus: 22 resolved case→case edges (was 24; the 2 dropped were place-only
+  matches), build 1.0 s. Behaviour is nearly identical at demo scale and roughly linear
+  in mentions at 10k+ docs.
+- `tests/test_citation_extraction.py` +3 (postings built, empty-block fast reject,
+  place-name-only rejection). Suite: 200 backend tests.

@@ -197,6 +197,19 @@ def normalize_citation(party_a: str, party_b: str) -> str:
 
 _GENERIC_NORM = _GENERIC_PARTY | {"v"}
 
+# Tokens that, on their own, are too common in Indian cause-titles to identify a
+# case: place names and very frequent surnames. A resolution must share at least
+# one token OUTSIDE this set with the matched title.
+_WEAK_TITLE_TOKENS = {
+    "singh", "kumar", "lal", "das", "devi", "rao", "reddy", "sharma", "prasad",
+    "nath", "chandra", "ram", "raj", "gupta", "kaur", "bai", "khan", "ali",
+    "uttar", "pradesh", "madhya", "andhra", "himachal", "arunachal", "west",
+    "bengal", "tamil", "nadu", "bihar", "orissa", "odisha", "punjab", "haryana",
+    "rajasthan", "gujarat", "maharashtra", "karnataka", "kerala", "assam",
+    "bombay", "madras", "delhi", "calcutta", "mysore", "hyderabad", "travancore",
+    "cochin", "bharat", "india", "indian", "central", "provinces",
+}
+
 
 def _content_tokens(normalized_citation: str) -> list[str]:
     """Distinctive tokens (drop 'v', generic party words, very short tokens)."""
@@ -234,11 +247,25 @@ class ResolvedCitation:
 
 @dataclass
 class CorpusTitleIndex:
-    """Fuzzy index of corpus cause-titles for citation resolution."""
+    """Fuzzy index of corpus cause-titles for citation resolution.
+
+    A token -> doc_ids inverted index (``_postings``) blocks the fuzzy search:
+    a query is only compared against titles that share at least one distinctive
+    token. This keeps resolution roughly linear in the *number of mentions*
+    rather than O(mentions x corpus_size), which matters at 10k+ documents.
+    """
 
     normalized: dict[str, str]              # doc_id -> "a v b" normalised
     titles: dict[str, str]                  # doc_id -> original title line
     years: dict[str, Optional[int]]         # doc_id -> year
+    _postings: dict[str, set] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self._postings:
+            self._postings = {}
+            for doc_id, norm in self.normalized.items():
+                for tok in set(_content_tokens(norm)):
+                    self._postings.setdefault(tok, set()).add(doc_id)
 
     @classmethod
     def from_corpus(cls, corpus) -> "CorpusTitleIndex":
@@ -263,6 +290,13 @@ class CorpusTitleIndex:
     def __len__(self) -> int:
         return len(self.normalized)
 
+    def _block(self, content_tokens: list[str], exclude_doc_id: Optional[str]) -> set:
+        ids: set = set()
+        for tok in content_tokens:
+            ids |= self._postings.get(tok, set())
+        ids.discard(exclude_doc_id)
+        return ids
+
     def resolve(
         self,
         citation: RawCaseCitation,
@@ -280,9 +314,11 @@ class CorpusTitleIndex:
         if len(content) < 2 or not any(len(t) >= 4 for t in content):
             return None
 
-        candidates = {
-            d: n for d, n in self.normalized.items() if d != exclude_doc_id
-        }
+        # blocking: only titles that share a distinctive token with the query
+        block = self._block(content, exclude_doc_id)
+        if not block:
+            return None
+        candidates = {d: self.normalized[d] for d in block}
         if not_after_year is not None:
             # a judgment cannot cite a case decided later than itself
             candidates = {
@@ -316,7 +352,7 @@ class CorpusTitleIndex:
         if fuzz.token_sort_ratio(query, matched_norm) < 60:
             return None
         shared = set(_content_tokens(query)) & set(_content_tokens(matched_norm))
-        if len(shared) < 2:
+        if len(shared) < 2 or not (shared - _WEAK_TITLE_TOKENS):
             return None
         return ResolvedCitation(
             raw=citation.raw,

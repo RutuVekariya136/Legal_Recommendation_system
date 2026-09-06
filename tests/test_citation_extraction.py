@@ -132,6 +132,23 @@ def test_resolve_rejects_debris_query(index):
     assert index.resolve(cit, min_score=85) is None
 
 
+def test_blocking_index_built_and_used(index):
+    # the token -> doc_ids inverted index blocks the fuzzy search
+    assert "dalip" in index._postings and "1960_D_4" in index._postings["dalip"]
+    # a query whose distinctive tokens hit no posting resolves to nothing fast
+    cit = RawCaseCitation(raw="Zzz Qqq v Wwww Vvvv", party_a="Zzz Qqq", party_b="Wwww Vvvv")
+    assert index.resolve(cit, min_score=80) is None
+
+
+def test_resolve_needs_a_non_placename_shared_token(index):
+    # "X Singh v State of Punjab" must not match "Y Singh v State of Punjab"
+    # just on {singh, punjab}
+    cit = RawCaseCitation(raw="Harbans Singh v State of Punjab",
+                          party_a="Harbans Singh", party_b="State of Punjab")
+    # index has "Dalip Singh v State of Punjab" (1960_D_4)
+    assert index.resolve(cit, min_score=85) is None
+
+
 # -- end to end on the real corpus --------------------------------
 
 @pytest.fixture(scope="module")
