@@ -114,9 +114,21 @@ def metapath_walks(
     seed: int = 42,
 ) -> list[list[str]]:
     rng = random.Random(seed)
+    ntype = {n: d.get("ntype", "?") for n, d in graph.nodes(data=True)}
     by_type: dict[str, list[str]] = defaultdict(list)
-    for n, d in graph.nodes(data=True):
-        by_type[d.get("ntype", "?")].append(n)
+    for n, t in ntype.items():
+        by_type[t].append(n)
+
+    # precompute per-node {neighbour type -> ([nodes], [weights])} once, so each
+    # walk step is an O(1) lookup + weighted choice rather than an O(degree) scan.
+    typed_nbrs: dict[str, dict[str, tuple[list, list]]] = {}
+    for n in graph.nodes():
+        buckets: dict[str, tuple[list, list]] = {}
+        for m in graph.neighbors(n):
+            nodes_w = buckets.setdefault(ntype[m], ([], []))
+            nodes_w[0].append(m)
+            nodes_w[1].append(float(graph[n][m].get("weight", 1.0)) or 1.0)
+        typed_nbrs[n] = buckets
 
     walks: list[list[str]] = []
     for _ in range(num_walks):
@@ -132,14 +144,10 @@ def metapath_walks(
                 cur = start
                 for step in range(walk_length - 1):
                     want = schema[(step % unit) + 1]
-                    typed_nbrs = [
-                        n for n in graph.neighbors(cur)
-                        if graph.nodes[n].get("ntype") == want
-                    ]
-                    if not typed_nbrs:
+                    bucket = typed_nbrs[cur].get(want)
+                    if not bucket:
                         break
-                    weights = [float(graph[cur][n].get("weight", 1.0)) or 1.0 for n in typed_nbrs]
-                    cur = rng.choices(typed_nbrs, weights=weights)[0]
+                    cur = rng.choices(bucket[0], weights=bucket[1])[0]
                     walk.append(cur)
                 if len(walk) > 2:
                     walks.append(walk)

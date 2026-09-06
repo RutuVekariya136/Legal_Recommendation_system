@@ -667,7 +667,15 @@ ARCHITECTURE.md, EVALUATION.md, DEMO.md.
 - `tests/test_statute_extraction.py` +2 (sample covers the criminal/commercial Acts;
   external file merges over, not replaces). Suite: 203.
 
-**Phase 2 status:** P1 (bulk corpus) · P2 (ANN retrieval) · P3 (Postgres) · P4 (citation
-blocking) · P6 (statute hierarchy) · P7-plumbing done. **P5 (graph backend swap) is the
-only remaining item** and only matters above ~50k documents. **203 backend + 10 frontend
-tests.**
+### P5 — faster metapath walks
+- `metapath_walks` precomputes per-node `{neighbour-type -> (nodes, weights)}` once; each
+  walk step is now an O(1) dict lookup + weighted choice instead of an O(degree) scan over
+  `graph.neighbors(cur)` filtering on `ntype`. Metapath-walk network build ≈ 17 s → 9 s on
+  the demo graph; scales far better with node degree.
+- Above ~100k nodes the `nx.Graph` construction itself is the limit — SCALING.md notes the
+  `pecanpy` / `scipy.sparse` CSR swap for that regime.
+
+**Phase 2 status:** P1–P7 all addressed (P5/P7 partial; P5's full graph-backend swap and
+P7's actual InLegalBERT run are noted in SCALING.md for the >100k / GPU regime).
+**203 backend + 10 frontend tests.** The demo runs unchanged; scale mode
+(`CORPUS_SOURCE=db`, ANN, Postgres, extensible hierarchy) is in place and tested.
