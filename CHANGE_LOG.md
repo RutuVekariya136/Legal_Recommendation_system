@@ -648,6 +648,26 @@ ARCHITECTURE.md, EVALUATION.md, DEMO.md.
   (`law-ai/InLegalBERT`, `law-ai/InCaseLawBERT`, or the default MiniLM) now flows through.
   Running it still needs `requirements-ml.txt` + a GPU + the model download.
 
+### P6 — statute hierarchy: expanded + pluggable
+- `resources/statute_hierarchy.json` — 27 → **41 curated Acts**: added NDPS 1985, PMLA
+  2002, IBC 2016, POCSO 2012, DV Act 2005, UAPA 1967, SC/ST Act 1989, Arbitration &
+  Conciliation 1996 (full sections), Companies 2013, Consumer Protection 1986 & 2019, RTI
+  2005, RTE 2009, Registration 1908, Specific Relief 1963 (full), Hindu Marriage 1955
+  (full), Dowry Prohibition 1961 — with section titles. `_SECTION_CEILINGS` extended to
+  ~35 codes.
+- `load_hierarchy()` merges an external JSON (`STATUTE_HIERARCHY_PATH` env / setting) over
+  the built-in sample — drop in an India Code parse without touching code.
+- `scripts/build_statute_hierarchy.py` — flat CSV
+  (`act_id,canonical,year,alias,container_id,container_title,section,section_title`) →
+  hierarchy JSON, with `--merge-into`.
+- Demo corpus: 23 → **26 Acts in the hierarchy**, 575 → 582 section→hierarchy paths;
+  the ceilings reject ~1,200 more garbage anaphoric section refs (8,205 → 7,013 resolved,
+  cleaner). Network correlation nudged up slightly (metapath2vec val Spearman 0.43 → 0.46);
+  test correlation now essentially exactly 0 rather than mildly negative.
+- `tests/test_statute_extraction.py` +2 (sample covers the criminal/commercial Acts;
+  external file merges over, not replaces). Suite: 203.
+
 **Phase 2 status:** P1 (bulk corpus) · P2 (ANN retrieval) · P3 (Postgres) · P4 (citation
-blocking) · P7-plumbing done. P5 (graph backend) and P6 (India Code hierarchy) remain —
-both only matter above ~50k documents. **201 backend + 10 frontend tests.**
+blocking) · P6 (statute hierarchy) · P7-plumbing done. **P5 (graph backend swap) is the
+only remaining item** and only matters above ~50k documents. **203 backend + 10 frontend
+tests.**

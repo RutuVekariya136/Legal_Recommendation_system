@@ -1,8 +1,13 @@
 {
   "_meta": {
-    "description": "HAND-CURATED SAMPLE statute hierarchy for Acts frequently cited in this ~295-document demo corpus. This is NOT the full 12,814-Act statute tree used by Bhattacharya et al. (2022) - that data is not published anywhere (CLAUDE.md section 3). Any cited Act absent from this file still receives an Act-level node in Hier-SPCNet; it is never dropped or invented. Section titles below are public structural facts about these codes, curated for the demo, not exhaustive.",
-    "levels": ["act", "part", "chapter", "section"],
-    "curated_on": "2026-09-05"
+    "description": "HAND-CURATED SAMPLE statute hierarchy for Acts frequently litigated in Indian Supreme Court / High Court judgments (the base-paper demo corpus plus common criminal and commercial statutes). This is NOT the full 12,814-Act statute tree used by Bhattacharya et al. (2022) - that data is not published anywhere (CLAUDE.md section 3). Extend it with STATUTE_HIERARCHY_PATH (see SCALING.md). Any cited Act absent from this file still receives an Act-level node in Hier-SPCNet.",
+    "levels": [
+      "act",
+      "part",
+      "chapter",
+      "section"
+    ],
+    "curated_on": "2026-09-06"
   },
   "aliases": {
     "indian penal code": "ipc_1860",
@@ -58,69 +63,332 @@
     "r.p. act": "rp_act_1951",
     "rp act": "rp_act_1951",
     "specific relief act": "specific_relief_act_1963",
-    "motor vehicles act": "motor_vehicles_act_1988"
+    "motor vehicles act": "motor_vehicles_act_1988",
+    "narcotic drugs and psychotropic substances act": "ndps_act_1985",
+    "ndps act": "ndps_act_1985",
+    "n.d.p.s. act": "ndps_act_1985",
+    "prevention of money laundering act": "pmla_2002",
+    "pmla": "pmla_2002",
+    "p.m.l.a": "pmla_2002",
+    "companies act 2013": "companies_act_2013",
+    "consumer protection act": "consumer_protection_act_1986",
+    "consumer protection act 2019": "consumer_protection_act_2019",
+    "insolvency and bankruptcy code": "ibc_2016",
+    "i.b.c": "ibc_2016",
+    "ibc": "ibc_2016",
+    "right to information act": "rti_act_2005",
+    "r.t.i. act": "rti_act_2005",
+    "protection of children from sexual offences act": "pocso_act_2012",
+    "pocso act": "pocso_act_2012",
+    "pocso": "pocso_act_2012",
+    "scheduled castes and scheduled tribes prevention of atrocities act": "sc_st_act_1989",
+    "sc/st act": "sc_st_act_1989",
+    "sc st act": "sc_st_act_1989",
+    "atrocities act": "sc_st_act_1989",
+    "protection of women from domestic violence act": "dv_act_2005",
+    "domestic violence act": "dv_act_2005",
+    "d.v. act": "dv_act_2005",
+    "unlawful activities prevention act": "uapa_1967",
+    "uapa": "uapa_1967",
+    "u.a.p.a": "uapa_1967",
+    "dowry prohibition act": "dowry_prohibition_act_1961",
+    "registration act": "registration_act_1908",
+    "right of children to free and compulsory education act": "rte_act_2009",
+    "right to education act": "rte_act_2009",
+    "rte act": "rte_act_2009",
+    "arbitration and conciliation act 1996": "arbitration_conciliation_act_1996",
+    "hindu marriage act 1955": "hindu_marriage_act_1955"
   },
   "acts": {
     "ipc_1860": {
       "canonical": "Indian Penal Code, 1860",
       "year": 1860,
       "chapters": {
-        "IV": {"title": "General Exceptions", "sections": {"76": "Act done by person bound by law", "79": "Act done by person justified, or by mistake of fact believing himself justified, by law", "80": "Accident in doing a lawful act", "81": "Act likely to cause harm, but done without criminal intent to prevent other harm", "84": "Act of a person of unsound mind", "87": "Act not intended and not known to be likely to cause death or grievous hurt, done by consent", "88": "Act not intended to cause death, done by consent in good faith for person's benefit", "89": "Act done in good faith for benefit of child or insane person, by or by consent of guardian", "90": "Consent known to be given under fear or misconception", "91": "Exclusion of acts which are offences independently of harm caused", "92": "Act done in good faith for benefit of a person without consent", "93": "Communication made in good faith", "96": "Right of private defence", "100": "When right of private defence of the body extends to causing death"}},
-        "V": {"title": "Of Abetment", "sections": {"107": "Abetment of a thing", "109": "Punishment of abetment", "120": "Concealing design to commit offence"}},
-        "VA": {"title": "Criminal Conspiracy", "sections": {"120A": "Definition of criminal conspiracy", "120B": "Punishment of criminal conspiracy"}},
-        "XVI": {"title": "Of Offences Affecting the Human Body", "sections": {"299": "Culpable homicide", "300": "Murder", "301": "Culpable homicide by causing death of person other than intended", "302": "Punishment for murder", "304": "Punishment for culpable homicide not amounting to murder", "304A": "Causing death by negligence", "304B": "Dowry death", "306": "Abetment of suicide", "307": "Attempt to murder", "319": "Hurt", "320": "Grievous hurt", "323": "Punishment for voluntarily causing hurt", "324": "Voluntarily causing hurt by dangerous weapons", "325": "Punishment for voluntarily causing grievous hurt", "326": "Voluntarily causing grievous hurt by dangerous weapons", "34": "Acts done by several persons in furtherance of common intention", "149": "Every member of unlawful assembly guilty of offence committed in prosecution of common object", "375": "Rape", "376": "Punishment for rape"}},
-        "XVII": {"title": "Of Offences Against Property", "sections": {"378": "Theft", "379": "Punishment for theft", "390": "Robbery", "392": "Punishment for robbery", "395": "Punishment for dacoity", "403": "Dishonest misappropriation of property", "405": "Criminal breach of trust", "406": "Punishment for criminal breach of trust", "409": "Criminal breach of trust by public servant, banker, merchant or agent", "415": "Cheating", "420": "Cheating and dishonestly inducing delivery of property", "463": "Forgery", "464": "Making a false document", "467": "Forgery of valuable security", "468": "Forgery for purpose of cheating", "471": "Using as genuine a forged document"}},
-        "XXI": {"title": "Of Defamation", "sections": {"499": "Defamation", "500": "Punishment for defamation"}}
+        "IV": {
+          "title": "General Exceptions",
+          "sections": {
+            "76": "Act done by person bound by law",
+            "79": "Act done by person justified, or by mistake of fact believing himself justified, by law",
+            "80": "Accident in doing a lawful act",
+            "81": "Act likely to cause harm, but done without criminal intent to prevent other harm",
+            "84": "Act of a person of unsound mind",
+            "87": "Act not intended and not known to be likely to cause death or grievous hurt, done by consent",
+            "88": "Act not intended to cause death, done by consent in good faith for person's benefit",
+            "89": "Act done in good faith for benefit of child or insane person, by or by consent of guardian",
+            "90": "Consent known to be given under fear or misconception",
+            "91": "Exclusion of acts which are offences independently of harm caused",
+            "92": "Act done in good faith for benefit of a person without consent",
+            "93": "Communication made in good faith",
+            "96": "Right of private defence",
+            "100": "When right of private defence of the body extends to causing death"
+          }
+        },
+        "V": {
+          "title": "Of Abetment",
+          "sections": {
+            "107": "Abetment of a thing",
+            "109": "Punishment of abetment",
+            "120": "Concealing design to commit offence"
+          }
+        },
+        "VA": {
+          "title": "Criminal Conspiracy",
+          "sections": {
+            "120A": "Definition of criminal conspiracy",
+            "120B": "Punishment of criminal conspiracy"
+          }
+        },
+        "XVI": {
+          "title": "Of Offences Affecting the Human Body",
+          "sections": {
+            "299": "Culpable homicide",
+            "300": "Murder",
+            "301": "Culpable homicide by causing death of person other than intended",
+            "302": "Punishment for murder",
+            "304": "Punishment for culpable homicide not amounting to murder",
+            "304A": "Causing death by negligence",
+            "304B": "Dowry death",
+            "306": "Abetment of suicide",
+            "307": "Attempt to murder",
+            "319": "Hurt",
+            "320": "Grievous hurt",
+            "323": "Punishment for voluntarily causing hurt",
+            "324": "Voluntarily causing hurt by dangerous weapons",
+            "325": "Punishment for voluntarily causing grievous hurt",
+            "326": "Voluntarily causing grievous hurt by dangerous weapons",
+            "34": "Acts done by several persons in furtherance of common intention",
+            "149": "Every member of unlawful assembly guilty of offence committed in prosecution of common object",
+            "375": "Rape",
+            "376": "Punishment for rape"
+          }
+        },
+        "XVII": {
+          "title": "Of Offences Against Property",
+          "sections": {
+            "378": "Theft",
+            "379": "Punishment for theft",
+            "390": "Robbery",
+            "392": "Punishment for robbery",
+            "395": "Punishment for dacoity",
+            "403": "Dishonest misappropriation of property",
+            "405": "Criminal breach of trust",
+            "406": "Punishment for criminal breach of trust",
+            "409": "Criminal breach of trust by public servant, banker, merchant or agent",
+            "415": "Cheating",
+            "420": "Cheating and dishonestly inducing delivery of property",
+            "463": "Forgery",
+            "464": "Making a false document",
+            "467": "Forgery of valuable security",
+            "468": "Forgery for purpose of cheating",
+            "471": "Using as genuine a forged document"
+          }
+        },
+        "XXI": {
+          "title": "Of Defamation",
+          "sections": {
+            "499": "Defamation",
+            "500": "Punishment for defamation"
+          }
+        }
       }
     },
     "crpc_1973": {
       "canonical": "Code of Criminal Procedure, 1973",
       "year": 1973,
       "chapters": {
-        "XII": {"title": "Information to the Police and their Powers to Investigate", "sections": {"154": "Information in cognizable cases", "156": "Police officer's power to investigate cognizable case", "161": "Examination of witnesses by police", "162": "Statements to police not to be signed", "164": "Recording of confessions and statements", "173": "Report of police officer on completion of investigation"}},
-        "XIV": {"title": "Conditions Requisite for Initiation of Proceedings", "sections": {"190": "Cognizance of offences by Magistrates", "197": "Prosecution of Judges and public servants"}},
-        "XVIII": {"title": "Trial Before a Court of Session", "sections": {"227": "Discharge", "228": "Framing of charge", "313": "Power to examine the accused"}},
-        "XXXIII": {"title": "Provisions as to Bail and Bonds", "sections": {"437": "When bail may be taken in case of non-bailable offence", "438": "Direction for grant of bail to person apprehending arrest", "439": "Special powers of High Court or Court of Session regarding bail"}},
-        "XXXVI": {"title": "Limitation for Taking Cognizance of Certain Offences", "sections": {"468": "Bar to taking cognizance after lapse of the period of limitation", "482": "Saving of inherent powers of High Court"}}
+        "XII": {
+          "title": "Information to the Police and their Powers to Investigate",
+          "sections": {
+            "154": "Information in cognizable cases",
+            "156": "Police officer's power to investigate cognizable case",
+            "161": "Examination of witnesses by police",
+            "162": "Statements to police not to be signed",
+            "164": "Recording of confessions and statements",
+            "173": "Report of police officer on completion of investigation"
+          }
+        },
+        "XIV": {
+          "title": "Conditions Requisite for Initiation of Proceedings",
+          "sections": {
+            "190": "Cognizance of offences by Magistrates",
+            "197": "Prosecution of Judges and public servants"
+          }
+        },
+        "XVIII": {
+          "title": "Trial Before a Court of Session",
+          "sections": {
+            "227": "Discharge",
+            "228": "Framing of charge",
+            "313": "Power to examine the accused"
+          }
+        },
+        "XXXIII": {
+          "title": "Provisions as to Bail and Bonds",
+          "sections": {
+            "437": "When bail may be taken in case of non-bailable offence",
+            "438": "Direction for grant of bail to person apprehending arrest",
+            "439": "Special powers of High Court or Court of Session regarding bail"
+          }
+        },
+        "XXXVI": {
+          "title": "Limitation for Taking Cognizance of Certain Offences",
+          "sections": {
+            "468": "Bar to taking cognizance after lapse of the period of limitation",
+            "482": "Saving of inherent powers of High Court"
+          }
+        }
       }
     },
-    "crpc_1898": {"canonical": "Code of Criminal Procedure, 1898", "year": 1898, "chapters": {}},
+    "crpc_1898": {
+      "canonical": "Code of Criminal Procedure, 1898",
+      "year": 1898,
+      "chapters": {}
+    },
     "cpc_1908": {
       "canonical": "Code of Civil Procedure, 1908",
       "year": 1908,
       "chapters": {
-        "I": {"title": "Suits in General", "sections": {"9": "Courts to try all civil suits unless barred", "11": "Res judicata", "80": "Notice to Government"}},
-        "II": {"title": "Appeals", "sections": {"96": "Appeal from original decree", "100": "Second appeal", "115": "Revision"}}
+        "I": {
+          "title": "Suits in General",
+          "sections": {
+            "9": "Courts to try all civil suits unless barred",
+            "11": "Res judicata",
+            "80": "Notice to Government"
+          }
+        },
+        "II": {
+          "title": "Appeals",
+          "sections": {
+            "96": "Appeal from original decree",
+            "100": "Second appeal",
+            "115": "Revision"
+          }
+        }
       }
     },
     "constitution_india": {
       "canonical": "Constitution of India",
       "year": 1950,
       "parts": {
-        "III": {"title": "Fundamental Rights", "sections": {"12": "Definition of State", "13": "Laws inconsistent with or in derogation of the fundamental rights", "14": "Equality before law", "15": "Prohibition of discrimination", "16": "Equality of opportunity in matters of public employment", "19": "Protection of certain rights regarding freedom of speech etc.", "20": "Protection in respect of conviction for offences", "21": "Protection of life and personal liberty", "22": "Protection against arrest and detention in certain cases", "25": "Freedom of conscience and free profession, practice and propagation of religion", "31": "Compulsory acquisition of property (repealed)", "32": "Remedies for enforcement of rights conferred by this Part"}},
-        "IV": {"title": "Directive Principles of State Policy", "sections": {"39": "Certain principles of policy to be followed by the State", "40": "Organisation of village panchayats"}},
-        "V": {"title": "The Union", "sections": {"124": "Establishment and constitution of Supreme Court", "136": "Special leave to appeal by the Supreme Court", "141": "Law declared by Supreme Court to be binding on all courts"}},
-        "VI": {"title": "The States", "sections": {"226": "Power of High Courts to issue certain writs", "227": "Power of superintendence over all courts by the High Court"}},
-        "XI": {"title": "Relations between the Union and the States", "sections": {"245": "Extent of laws made by Parliament and by the Legislatures of States", "246": "Subject-matter of laws made by Parliament and by the Legislatures of States", "248": "Residuary powers of legislation"}},
-        "XIII": {"title": "Trade, Commerce and Intercourse within the Territory of India", "sections": {"286": "Restrictions as to imposition of tax on the sale or purchase of goods", "301": "Freedom of trade, commerce and intercourse", "304": "Restrictions on trade, commerce and intercourse among States"}}
+        "III": {
+          "title": "Fundamental Rights",
+          "sections": {
+            "12": "Definition of State",
+            "13": "Laws inconsistent with or in derogation of the fundamental rights",
+            "14": "Equality before law",
+            "15": "Prohibition of discrimination",
+            "16": "Equality of opportunity in matters of public employment",
+            "19": "Protection of certain rights regarding freedom of speech etc.",
+            "20": "Protection in respect of conviction for offences",
+            "21": "Protection of life and personal liberty",
+            "22": "Protection against arrest and detention in certain cases",
+            "25": "Freedom of conscience and free profession, practice and propagation of religion",
+            "31": "Compulsory acquisition of property (repealed)",
+            "32": "Remedies for enforcement of rights conferred by this Part"
+          }
+        },
+        "IV": {
+          "title": "Directive Principles of State Policy",
+          "sections": {
+            "39": "Certain principles of policy to be followed by the State",
+            "40": "Organisation of village panchayats"
+          }
+        },
+        "V": {
+          "title": "The Union",
+          "sections": {
+            "124": "Establishment and constitution of Supreme Court",
+            "136": "Special leave to appeal by the Supreme Court",
+            "141": "Law declared by Supreme Court to be binding on all courts"
+          }
+        },
+        "VI": {
+          "title": "The States",
+          "sections": {
+            "226": "Power of High Courts to issue certain writs",
+            "227": "Power of superintendence over all courts by the High Court"
+          }
+        },
+        "XI": {
+          "title": "Relations between the Union and the States",
+          "sections": {
+            "245": "Extent of laws made by Parliament and by the Legislatures of States",
+            "246": "Subject-matter of laws made by Parliament and by the Legislatures of States",
+            "248": "Residuary powers of legislation"
+          }
+        },
+        "XIII": {
+          "title": "Trade, Commerce and Intercourse within the Territory of India",
+          "sections": {
+            "286": "Restrictions as to imposition of tax on the sale or purchase of goods",
+            "301": "Freedom of trade, commerce and intercourse",
+            "304": "Restrictions on trade, commerce and intercourse among States"
+          }
+        }
       }
     },
     "evidence_act_1872": {
       "canonical": "Indian Evidence Act, 1872",
       "year": 1872,
       "chapters": {
-        "II": {"title": "Of the Relevancy of Facts", "sections": {"6": "Relevancy of facts forming part of same transaction", "8": "Motive, preparation and previous or subsequent conduct", "9": "Facts necessary to explain or introduce relevant facts", "24": "Confession caused by inducement, threat or promise", "25": "Confession to police officer not to be proved", "27": "How much of information received from accused may be proved", "32": "Cases in which statement of relevant fact by person who is dead etc. is relevant"}},
-        "III": {"title": "On Proof", "sections": {"45": "Opinions of experts", "65": "Cases in which secondary evidence relating to documents may be given", "68": "Proof of execution of document required by law to be attested"}},
-        "VII": {"title": "Of the Burden of Proof", "sections": {"101": "Burden of proof", "106": "Burden of proving fact especially within knowledge", "114": "Court may presume existence of certain facts"}},
-        "IX": {"title": "Of Witnesses", "sections": {"133": "Accomplice", "134": "Number of witnesses"}}
+        "II": {
+          "title": "Of the Relevancy of Facts",
+          "sections": {
+            "6": "Relevancy of facts forming part of same transaction",
+            "8": "Motive, preparation and previous or subsequent conduct",
+            "9": "Facts necessary to explain or introduce relevant facts",
+            "24": "Confession caused by inducement, threat or promise",
+            "25": "Confession to police officer not to be proved",
+            "27": "How much of information received from accused may be proved",
+            "32": "Cases in which statement of relevant fact by person who is dead etc. is relevant"
+          }
+        },
+        "III": {
+          "title": "On Proof",
+          "sections": {
+            "45": "Opinions of experts",
+            "65": "Cases in which secondary evidence relating to documents may be given",
+            "68": "Proof of execution of document required by law to be attested"
+          }
+        },
+        "VII": {
+          "title": "Of the Burden of Proof",
+          "sections": {
+            "101": "Burden of proof",
+            "106": "Burden of proving fact especially within knowledge",
+            "114": "Court may presume existence of certain facts"
+          }
+        },
+        "IX": {
+          "title": "Of Witnesses",
+          "sections": {
+            "133": "Accomplice",
+            "134": "Number of witnesses"
+          }
+        }
       }
     },
     "contract_act_1872": {
       "canonical": "Indian Contract Act, 1872",
       "year": 1872,
       "chapters": {
-        "I": {"title": "Of the Communication, Acceptance and Revocation of Proposals", "sections": {"2": "Interpretation clause", "10": "What agreements are contracts", "23": "What consideration and objects are lawful"}},
-        "II": {"title": "Of Voidable Contracts and Void Agreements", "sections": {"56": "Agreement to do impossible act", "65": "Obligation of person who has received advantage under void agreement", "73": "Compensation for loss or damage caused by breach of contract", "74": "Compensation for breach of contract where penalty stipulated for"}}
+        "I": {
+          "title": "Of the Communication, Acceptance and Revocation of Proposals",
+          "sections": {
+            "2": "Interpretation clause",
+            "10": "What agreements are contracts",
+            "23": "What consideration and objects are lawful"
+          }
+        },
+        "II": {
+          "title": "Of Voidable Contracts and Void Agreements",
+          "sections": {
+            "56": "Agreement to do impossible act",
+            "65": "Obligation of person who has received advantage under void agreement",
+            "73": "Compensation for loss or damage caused by breach of contract",
+            "74": "Compensation for breach of contract where penalty stipulated for"
+          }
+        }
       }
     },
     "income_tax_act_1922": {
@@ -128,49 +396,510 @@
       "year": 1922,
       "act_number": "XI of 1922",
       "chapters": {
-        "III": {"title": "Taxable Income", "sections": {"4": "Application of Act", "9": "Property income", "10": "Business", "12": "Other sources"}},
-        "IV": {"title": "Deductions and Assessment", "sections": {"22": "Return of income", "23": "Assessment", "34": "Income escaping assessment"}},
-        "VI": {"title": "References and Appeals", "sections": {"66": "Statement of case to the High Court", "66A": "Appeal to the Supreme Court"}}
+        "III": {
+          "title": "Taxable Income",
+          "sections": {
+            "4": "Application of Act",
+            "9": "Property income",
+            "10": "Business",
+            "12": "Other sources"
+          }
+        },
+        "IV": {
+          "title": "Deductions and Assessment",
+          "sections": {
+            "22": "Return of income",
+            "23": "Assessment",
+            "34": "Income escaping assessment"
+          }
+        },
+        "VI": {
+          "title": "References and Appeals",
+          "sections": {
+            "66": "Statement of case to the High Court",
+            "66A": "Appeal to the Supreme Court"
+          }
+        }
       }
     },
     "income_tax_act_1961": {
       "canonical": "Income-tax Act, 1961",
       "year": 1961,
       "chapters": {
-        "XIV": {"title": "Procedure for Assessment", "sections": {"139": "Return of income", "143": "Assessment", "147": "Income escaping assessment", "148": "Issue of notice where income has escaped assessment"}},
-        "XX": {"title": "Appeals and Revision", "sections": {"246": "Appealable orders", "260A": "Appeal to High Court"}}
+        "XIV": {
+          "title": "Procedure for Assessment",
+          "sections": {
+            "139": "Return of income",
+            "143": "Assessment",
+            "147": "Income escaping assessment",
+            "148": "Issue of notice where income has escaped assessment"
+          }
+        },
+        "XX": {
+          "title": "Appeals and Revision",
+          "sections": {
+            "246": "Appealable orders",
+            "260A": "Appeal to High Court"
+          }
+        }
       }
     },
-    "limitation_act_1963": {"canonical": "Limitation Act, 1963", "year": 1963, "chapters": {"II": {"title": "Limitation of Suits, Appeals and Applications", "sections": {"3": "Bar of limitation", "5": "Extension of prescribed period in certain cases", "14": "Exclusion of time of proceeding bona fide in court without jurisdiction"}}}},
-    "limitation_act_1908": {"canonical": "Indian Limitation Act, 1908", "year": 1908, "chapters": {}},
+    "limitation_act_1963": {
+      "canonical": "Limitation Act, 1963",
+      "year": 1963,
+      "chapters": {
+        "II": {
+          "title": "Limitation of Suits, Appeals and Applications",
+          "sections": {
+            "3": "Bar of limitation",
+            "5": "Extension of prescribed period in certain cases",
+            "14": "Exclusion of time of proceeding bona fide in court without jurisdiction"
+          }
+        }
+      }
+    },
+    "limitation_act_1908": {
+      "canonical": "Indian Limitation Act, 1908",
+      "year": 1908,
+      "chapters": {}
+    },
     "industrial_disputes_act_1947": {
       "canonical": "Industrial Disputes Act, 1947",
       "year": 1947,
       "chapters": {
-        "II": {"title": "Authorities under this Act", "sections": {"10": "Reference of disputes to Boards, Courts or Tribunals", "11A": "Powers of Labour Courts, Tribunals and National Tribunals to give appropriate relief"}},
-        "V": {"title": "Strikes and Lock-outs", "sections": {"25F": "Conditions precedent to retrenchment of workmen", "33": "Conditions of service to remain unchanged under certain circumstances during pendency of proceedings"}}
+        "II": {
+          "title": "Authorities under this Act",
+          "sections": {
+            "10": "Reference of disputes to Boards, Courts or Tribunals",
+            "11A": "Powers of Labour Courts, Tribunals and National Tribunals to give appropriate relief"
+          }
+        },
+        "V": {
+          "title": "Strikes and Lock-outs",
+          "sections": {
+            "25F": "Conditions precedent to retrenchment of workmen",
+            "33": "Conditions of service to remain unchanged under certain circumstances during pendency of proceedings"
+          }
+        }
       }
     },
     "land_acquisition_act_1894": {
       "canonical": "Land Acquisition Act, 1894",
       "year": 1894,
       "chapters": {
-        "II": {"title": "Acquisition", "sections": {"4": "Publication of preliminary notification", "6": "Declaration that land is required for a public purpose", "9": "Notice to persons interested", "18": "Reference to Court", "23": "Matters to be considered in determining compensation", "48": "Completion of acquisition not compulsory"}}
+        "II": {
+          "title": "Acquisition",
+          "sections": {
+            "4": "Publication of preliminary notification",
+            "6": "Declaration that land is required for a public purpose",
+            "9": "Notice to persons interested",
+            "18": "Reference to Court",
+            "23": "Matters to be considered in determining compensation",
+            "48": "Completion of acquisition not compulsory"
+          }
+        }
       }
     },
-    "general_clauses_act_1897": {"canonical": "General Clauses Act, 1897", "year": 1897, "chapters": {"II": {"title": "General Definitions", "sections": {"3": "Definitions", "6": "Effect of repeal", "24": "Continuation of orders etc. issued under enactments repealed and re-enacted"}}}},
-    "prevention_of_corruption_act_1947": {"canonical": "Prevention of Corruption Act, 1947", "year": 1947, "chapters": {}},
-    "prevention_of_corruption_act_1988": {"canonical": "Prevention of Corruption Act, 1988", "year": 1988, "chapters": {"III": {"title": "Offences and Penalties", "sections": {"7": "Public servant taking gratification other than legal remuneration", "13": "Criminal misconduct by a public servant", "19": "Previous sanction necessary for prosecution"}}}},
-    "negotiable_instruments_act_1881": {"canonical": "Negotiable Instruments Act, 1881", "year": 1881, "chapters": {"XVII": {"title": "Of Penalties in Case of Dishonour of Certain Cheques", "sections": {"138": "Dishonour of cheque for insufficiency of funds", "141": "Offences by companies"}}}},
-    "hindu_succession_act_1956": {"canonical": "Hindu Succession Act, 1956", "year": 1956, "chapters": {}},
-    "hindu_marriage_act_1955": {"canonical": "Hindu Marriage Act, 1955", "year": 1955, "chapters": {}},
-    "companies_act_1956": {"canonical": "Companies Act, 1956", "year": 1956, "chapters": {}},
-    "goi_act_1935": {"canonical": "Government of India Act, 1935", "year": 1935, "chapters": {}},
-    "arbitration_act_1940": {"canonical": "Arbitration Act, 1940", "year": 1940, "chapters": {}},
-    "arbitration_conciliation_act_1996": {"canonical": "Arbitration and Conciliation Act, 1996", "year": 1996, "chapters": {}},
-    "transfer_of_property_act_1882": {"canonical": "Transfer of Property Act, 1882", "year": 1882, "chapters": {"II": {"title": "Of Transfers of Property by Act of Parties", "sections": {"53A": "Part performance", "54": "Sale defined", "58": "Mortgage, mortgagor, mortgagee etc. defined"}}}},
-    "rp_act_1951": {"canonical": "Representation of the People Act, 1951", "year": 1951, "chapters": {}},
-    "specific_relief_act_1963": {"canonical": "Specific Relief Act, 1963", "year": 1963, "chapters": {}},
-    "motor_vehicles_act_1988": {"canonical": "Motor Vehicles Act, 1988", "year": 1988, "chapters": {}}
+    "general_clauses_act_1897": {
+      "canonical": "General Clauses Act, 1897",
+      "year": 1897,
+      "chapters": {
+        "II": {
+          "title": "General Definitions",
+          "sections": {
+            "3": "Definitions",
+            "6": "Effect of repeal",
+            "24": "Continuation of orders etc. issued under enactments repealed and re-enacted"
+          }
+        }
+      }
+    },
+    "prevention_of_corruption_act_1947": {
+      "canonical": "Prevention of Corruption Act, 1947",
+      "year": 1947,
+      "chapters": {}
+    },
+    "prevention_of_corruption_act_1988": {
+      "canonical": "Prevention of Corruption Act, 1988",
+      "year": 1988,
+      "chapters": {
+        "III": {
+          "title": "Offences and Penalties",
+          "sections": {
+            "7": "Public servant taking gratification other than legal remuneration",
+            "13": "Criminal misconduct by a public servant",
+            "19": "Previous sanction necessary for prosecution"
+          }
+        }
+      }
+    },
+    "negotiable_instruments_act_1881": {
+      "canonical": "Negotiable Instruments Act, 1881",
+      "year": 1881,
+      "chapters": {
+        "XVII": {
+          "title": "Of Penalties in Case of Dishonour of Certain Cheques",
+          "sections": {
+            "138": "Dishonour of cheque for insufficiency of funds",
+            "141": "Offences by companies"
+          }
+        }
+      }
+    },
+    "hindu_succession_act_1956": {
+      "canonical": "Hindu Succession Act, 1956",
+      "year": 1956,
+      "chapters": {}
+    },
+    "hindu_marriage_act_1955": {
+      "canonical": "Hindu Marriage Act, 1955",
+      "year": 1955,
+      "chapters": {
+        "I": {
+          "title": "Marriage and Matrimonial Reliefs",
+          "sections": {
+            "5": "Conditions for a Hindu marriage",
+            "9": "Restitution of conjugal rights",
+            "13": "Divorce",
+            "13B": "Divorce by mutual consent",
+            "24": "Maintenance pendente lite and expenses of proceedings",
+            "25": "Permanent alimony and maintenance"
+          }
+        }
+      }
+    },
+    "companies_act_1956": {
+      "canonical": "Companies Act, 1956",
+      "year": 1956,
+      "chapters": {}
+    },
+    "goi_act_1935": {
+      "canonical": "Government of India Act, 1935",
+      "year": 1935,
+      "chapters": {}
+    },
+    "arbitration_act_1940": {
+      "canonical": "Arbitration Act, 1940",
+      "year": 1940,
+      "chapters": {}
+    },
+    "arbitration_conciliation_act_1996": {
+      "canonical": "Arbitration and Conciliation Act, 1996",
+      "year": 1996,
+      "chapters": {
+        "I": {
+          "title": "Arbitration",
+          "sections": {
+            "8": "Power to refer parties to arbitration",
+            "9": "Interim measures by Court",
+            "11": "Appointment of arbitrators",
+            "16": "Competence of arbitral tribunal to rule on its jurisdiction",
+            "34": "Application for setting aside arbitral award",
+            "36": "Enforcement",
+            "37": "Appealable orders",
+            "48": "Conditions for enforcement of foreign awards"
+          }
+        }
+      }
+    },
+    "transfer_of_property_act_1882": {
+      "canonical": "Transfer of Property Act, 1882",
+      "year": 1882,
+      "chapters": {
+        "II": {
+          "title": "Of Transfers of Property by Act of Parties",
+          "sections": {
+            "53A": "Part performance",
+            "54": "Sale defined",
+            "58": "Mortgage, mortgagor, mortgagee etc. defined"
+          }
+        }
+      }
+    },
+    "rp_act_1951": {
+      "canonical": "Representation of the People Act, 1951",
+      "year": 1951,
+      "chapters": {}
+    },
+    "specific_relief_act_1963": {
+      "canonical": "Specific Relief Act, 1963",
+      "year": 1963,
+      "chapters": {
+        "II": {
+          "title": "Specific Performance of Contracts",
+          "sections": {
+            "10": "Specific performance of contract",
+            "14": "Contracts not specifically enforceable",
+            "16": "Personal bars to relief",
+            "20": "Discretion as to decreeing specific performance"
+          }
+        },
+        "VI": {
+          "title": "Declaratory and Injunctive Relief",
+          "sections": {
+            "34": "Discretion of court as to declaration of status or right",
+            "38": "Perpetual injunction when granted",
+            "41": "Injunction when refused"
+          }
+        }
+      }
+    },
+    "motor_vehicles_act_1988": {
+      "canonical": "Motor Vehicles Act, 1988",
+      "year": 1988,
+      "chapters": {}
+    },
+    "ndps_act_1985": {
+      "canonical": "Narcotic Drugs and Psychotropic Substances Act, 1985",
+      "year": 1985,
+      "chapters": {
+        "II": {
+          "title": "Prohibition, Control and Regulation",
+          "sections": {
+            "8": "Prohibition of certain operations",
+            "20": "Punishment for contravention in relation to cannabis plant and cannabis",
+            "21": "Punishment for contravention in relation to manufactured drugs",
+            "22": "Punishment for contravention in relation to psychotropic substances",
+            "27": "Punishment for consumption of any narcotic drug or psychotropic substance"
+          }
+        },
+        "IV": {
+          "title": "Offences and Penalties",
+          "sections": {
+            "37": "Offences to be cognizable and non-bailable",
+            "42": "Power of entry, search, seizure and arrest without warrant",
+            "50": "Conditions under which search of persons shall be conducted",
+            "54": "Presumption from possession of illicit articles"
+          }
+        }
+      }
+    },
+    "pmla_2002": {
+      "canonical": "Prevention of Money-Laundering Act, 2002",
+      "year": 2002,
+      "chapters": {
+        "II": {
+          "title": "Offence of Money-Laundering",
+          "sections": {
+            "3": "Offence of money-laundering",
+            "4": "Punishment for money-laundering"
+          }
+        },
+        "III": {
+          "title": "Attachment, Adjudication and Confiscation",
+          "sections": {
+            "5": "Attachment of property involved in money-laundering",
+            "8": "Adjudication"
+          }
+        },
+        "VIII": {
+          "title": "Special Courts",
+          "sections": {
+            "45": "Offences to be cognizable and non-bailable",
+            "50": "Powers of authorities regarding summons, production of documents and evidence"
+          }
+        }
+      }
+    },
+    "companies_act_2013": {
+      "canonical": "Companies Act, 2013",
+      "year": 2013,
+      "chapters": {
+        "I": {
+          "title": "Preliminary",
+          "sections": {
+            "2": "Definitions"
+          }
+        },
+        "XI": {
+          "title": "Appointment and Qualifications of Directors",
+          "sections": {
+            "149": "Company to have Board of Directors"
+          }
+        },
+        "XXIX": {
+          "title": "Miscellaneous",
+          "sections": {
+            "447": "Punishment for fraud"
+          }
+        }
+      }
+    },
+    "consumer_protection_act_1986": {
+      "canonical": "Consumer Protection Act, 1986",
+      "year": 1986,
+      "chapters": {
+        "III": {
+          "title": "Consumer Disputes Redressal Agencies",
+          "sections": {
+            "2": "Definitions",
+            "12": "Manner in which complaint shall be made",
+            "21": "Jurisdiction of the National Commission"
+          }
+        }
+      }
+    },
+    "consumer_protection_act_2019": {
+      "canonical": "Consumer Protection Act, 2019",
+      "year": 2019,
+      "chapters": {
+        "IV": {
+          "title": "Consumer Disputes Redressal Commissions",
+          "sections": {
+            "2": "Definitions",
+            "34": "Jurisdiction of District Commission",
+            "58": "Jurisdiction of National Commission"
+          }
+        }
+      }
+    },
+    "ibc_2016": {
+      "canonical": "Insolvency and Bankruptcy Code, 2016",
+      "year": 2016,
+      "chapters": {
+        "II": {
+          "title": "Corporate Insolvency Resolution Process",
+          "sections": {
+            "7": "Initiation by financial creditor",
+            "9": "Application by operational creditor",
+            "10": "Initiation by corporate applicant",
+            "29A": "Persons not eligible to be resolution applicant",
+            "31": "Approval of resolution plan"
+          }
+        },
+        "VI": {
+          "title": "Adjudicating Authority for Corporate Persons",
+          "sections": {
+            "61": "Appeals and Appellate Authority",
+            "238": "Provisions of this Code to override other laws"
+          }
+        }
+      }
+    },
+    "rti_act_2005": {
+      "canonical": "Right to Information Act, 2005",
+      "year": 2005,
+      "chapters": {
+        "II": {
+          "title": "Right to Information and Obligations of Public Authorities",
+          "sections": {
+            "6": "Request for obtaining information",
+            "8": "Exemption from disclosure of information",
+            "20": "Penalties"
+          }
+        }
+      }
+    },
+    "pocso_act_2012": {
+      "canonical": "Protection of Children from Sexual Offences Act, 2012",
+      "year": 2012,
+      "chapters": {
+        "II": {
+          "title": "Sexual Offences Against Children",
+          "sections": {
+            "3": "Penetrative sexual assault",
+            "4": "Punishment for penetrative sexual assault",
+            "5": "Aggravated penetrative sexual assault",
+            "6": "Punishment for aggravated penetrative sexual assault",
+            "7": "Sexual assault",
+            "8": "Punishment for sexual assault"
+          }
+        },
+        "V": {
+          "title": "Presumptions",
+          "sections": {
+            "29": "Presumption as to certain offences",
+            "30": "Presumption of culpable mental state"
+          }
+        }
+      }
+    },
+    "sc_st_act_1989": {
+      "canonical": "Scheduled Castes and Scheduled Tribes (Prevention of Atrocities) Act, 1989",
+      "year": 1989,
+      "chapters": {
+        "II": {
+          "title": "Offences of Atrocities",
+          "sections": {
+            "3": "Punishments for offences of atrocities",
+            "14": "Special Court",
+            "18": "Section 438 of the Code not to apply",
+            "18A": "No preliminary enquiry / approval required for FIR or arrest"
+          }
+        }
+      }
+    },
+    "dv_act_2005": {
+      "canonical": "Protection of Women from Domestic Violence Act, 2005",
+      "year": 2005,
+      "chapters": {
+        "IV": {
+          "title": "Procedure for Obtaining Orders of Reliefs",
+          "sections": {
+            "12": "Application to Magistrate",
+            "18": "Protection orders",
+            "19": "Residence orders",
+            "20": "Monetary reliefs",
+            "23": "Power to grant interim and ex parte orders"
+          }
+        }
+      }
+    },
+    "uapa_1967": {
+      "canonical": "Unlawful Activities (Prevention) Act, 1967",
+      "year": 1967,
+      "chapters": {
+        "IV": {
+          "title": "Punishment for Terrorist Activities",
+          "sections": {
+            "15": "Terrorist act",
+            "16": "Punishment for terrorist act",
+            "18": "Punishment for conspiracy etc.",
+            "43D": "Modified application of certain provisions of the Code"
+          }
+        }
+      }
+    },
+    "dowry_prohibition_act_1961": {
+      "canonical": "Dowry Prohibition Act, 1961",
+      "year": 1961,
+      "chapters": {
+        "I": {
+          "title": "Prohibition",
+          "sections": {
+            "2": "Definition of dowry",
+            "3": "Penalty for giving or taking dowry",
+            "4": "Penalty for demanding dowry"
+          }
+        }
+      }
+    },
+    "registration_act_1908": {
+      "canonical": "Registration Act, 1908",
+      "year": 1908,
+      "chapters": {
+        "III": {
+          "title": "Registrable Documents",
+          "sections": {
+            "17": "Documents of which registration is compulsory",
+            "18": "Documents of which registration is optional",
+            "49": "Effect of non-registration of documents required to be registered"
+          }
+        }
+      }
+    },
+    "rte_act_2009": {
+      "canonical": "Right of Children to Free and Compulsory Education Act, 2009",
+      "year": 2009,
+      "chapters": {
+        "II": {
+          "title": "Right to Free and Compulsory Education",
+          "sections": {
+            "3": "Right of child to free and compulsory education",
+            "12": "Extent of school responsibility for free and compulsory education"
+          }
+        }
+      }
+    }
   }
 }

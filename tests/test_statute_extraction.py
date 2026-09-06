@@ -41,6 +41,38 @@ def test_non_curated_act_gets_bare_node_never_dropped(h):
     assert m.in_sample_hierarchy is False
 
 
+def test_curated_sample_covers_common_criminal_and_commercial_acts(h):
+    assert len(h.curated_act_ids) >= 40
+    for aid in ("ndps_act_1985", "pmla_2002", "pocso_act_2012", "ibc_2016",
+                "dv_act_2005", "arbitration_conciliation_act_1996"):
+        assert h.has_act(aid) and h.act_canonical(aid)
+    assert h.resolve_act("NDPS Act").act_id == "ndps_act_1985"
+    assert h.section_title("pocso_act_2012", "4")
+
+
+def test_external_hierarchy_file_merges_over_the_sample(tmp_path, monkeypatch):
+    import json
+
+    from app.ml import statute_extraction as se
+
+    ext = tmp_path / "extra.json"
+    ext.write_text(json.dumps({
+        "aliases": {"my special act": "my_act_2020"},
+        "acts": {"my_act_2020": {"canonical": "My Special Act, 2020", "year": 2020,
+                                 "chapters": {"I": {"title": "Preliminary",
+                                                    "sections": {"5": "Key provision"}}}}},
+    }), encoding="utf-8")
+    monkeypatch.setenv("STATUTE_HIERARCHY_PATH", str(ext))
+    se.load_hierarchy.cache_clear()
+    try:
+        h2 = se.load_hierarchy()
+        assert h2.has_act("my_act_2020") and h2.has_act("ipc_1860")  # merged, not replaced
+        assert h2.resolve_act("My Special Act").act_id == "my_act_2020"
+        assert h2.section_title("my_act_2020", "5") == "Key provision"
+    finally:
+        se.load_hierarchy.cache_clear()
+
+
 def test_anaphoric_surface_returns_none(h):
     assert h.resolve_act("the Act") is None
     assert h.resolve_act("said Code") is None

@@ -77,6 +77,18 @@ python scripts/ingest_bulk.py --source jsonl --path judgments.jsonl \
 
 Dedups on `doc_id` and on text SHA-1. Batched inserts.
 
+## Extending the statute hierarchy (P6)
+
+```bash
+# acts.csv columns: act_id,canonical,year,alias,container_id,container_title,section,section_title
+python scripts/build_statute_hierarchy.py --csv acts.csv --out data/processed/hierarchy.json \
+    --merge-into backend/app/ml/resources/statute_hierarchy.json
+STATUTE_HIERARCHY_PATH=data/processed/hierarchy.json python scripts/build_all.py
+```
+
+The built-in 41-Act sample stays; your file is merged on top. Feed it an India Code
+parse or a section-list dump.
+
 ## Remaining engineering (phased)
 
 | Phase | Change | Why |
@@ -86,7 +98,7 @@ Dedups on `doc_id` and on text SHA-1. Batched inserts.
 | **P3 ✅** | `docker-compose.yml` (Postgres 16), `backend/requirements-pg.txt` (`psycopg2-binary`, `alembic`), Alembic wired to the app settings + models (`alembic upgrade head`), initial migration checked in. `make_engine` handles any URL. | SQLite won't hold the text or the write load; the switch is now a `DATABASE_URL` change + one migrate |
 | **P4 ✅** | citation-match **blocking** — a `token -> doc_ids` inverted index over distinctive title tokens; a query is only fuzzy-compared against titles that share a token, and a resolution must share a token outside a place-name / common-surname stop set. | the old fuzzy match scanned every title per mention (O(mentions × corpus)); blocking makes it roughly linear in mentions |
 | **P5** | graph backend: NetworkX → `scipy.sparse` / `igraph`, walks via `pecanpy` | ~35k cases + statute layer ≈ 200k nodes; NetworkX walks are the bottleneck |
-| **P6** | real statute hierarchy parsed from **India Code** (indiacode.nic.in) | replace the curated 23-Act sample |
+| **P6 ✅** | curated sample expanded to **41 Acts** (added NDPS, PMLA, IBC, POCSO, DV Act, UAPA, SC/ST Act, Arbitration & Conciliation, Companies 2013, Consumer Protection, RTI, RTE, Registration, Specific Relief, Hindu Marriage, …) with section titles + `_SECTION_CEILINGS`. `load_hierarchy()` merges an external `STATUTE_HIERARCHY_PATH` JSON over the sample; `scripts/build_statute_hierarchy.py` builds that JSON from a flat CSV (India Code parse / section-list scrape). | 12,814-Act tree unpublished; this covers the statutes that actually recur in SC/HC litigation and is now extensible without code |
 | **P7 ✅ (plumbing)** | `generate_embeddings.py --method sbert --sbert-model law-ai/InLegalBERT` flows through to `SbertEmbedder`. Actually running it needs `requirements-ml.txt` + a GPU + the model download. | better semantic signal than TF-IDF / generic SBERT |
 
 ## Hardware

@@ -111,6 +111,7 @@ Then the demo walkthrough in [DEMO.md](DEMO.md).
 | `build_network_similarity.py` | embedding + ICF overlap feature store | `data/embeddings/network_similarity/` |
 | `build_hybrid.py` | weighted / learned combiner | `data/embeddings/hybrid/` |
 | `build_index.py` | ANN index for candidate retrieval | `data/indexes/{text,network}/` |
+| `build_statute_hierarchy.py` | CSV → statute-hierarchy JSON (extends the sample) | a hierarchy JSON |
 | `recommend.py` | CLI Top-K for a case / file / text | stdout |
 | `explain.py` | CLI pairwise explanation | stdout |
 | `evaluate.py` | full benchmark + test-split diagnosis | `data/processed/evaluation_report.json` |

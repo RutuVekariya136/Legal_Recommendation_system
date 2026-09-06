@@ -162,9 +162,42 @@ class StatuteHierarchy:
                 (level, node_id, title)]
 
 
+def _deep_merge(base: dict, extra: dict) -> dict:
+    """Merge `extra` over `base` (dicts recursively, other values replaced)."""
+    out = dict(base)
+    for k, v in extra.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
 @lru_cache(maxsize=1)
 def load_hierarchy() -> StatuteHierarchy:
-    return StatuteHierarchy(json.loads(_RESOURCE.read_text(encoding="utf-8")))
+    """Built-in curated sample, optionally extended by an external hierarchy file.
+
+    Set ``STATUTE_HIERARCHY_PATH`` (or `settings.statute_hierarchy_path`) to a JSON
+    file with the same ``{aliases, acts}`` shape - its Acts/aliases are merged over
+    the sample, so you can drop in an India Code parse without touching the code.
+    """
+    import os
+
+    data = json.loads(_RESOURCE.read_text(encoding="utf-8"))
+    override = os.environ.get("STATUTE_HIERARCHY_PATH", "")
+    if not override:
+        try:
+            from app.config import get_settings
+
+            override = get_settings().statute_hierarchy_path
+        except Exception:  # noqa: BLE001 - settings optional for plain-script use
+            override = ""
+    if override and Path(override).is_file():
+        ext = json.loads(Path(override).read_text(encoding="utf-8"))
+        data = _deep_merge(data, {"aliases": ext.get("aliases", {}),
+                                  "acts": ext.get("acts", {})})
+        data.setdefault("_meta", {})["extended_with"] = override
+    return StatuteHierarchy(data)
 
 
 # --------------------------------------------------------------------------- #
@@ -183,6 +216,15 @@ _SECTION_CEILINGS = {
     "constitution_india": 395, "evidence_act_1872": 167, "contract_act_1872": 266,
     "income_tax_act_1922": 68, "income_tax_act_1961": 298,
     "general_clauses_act_1897": 38, "negotiable_instruments_act_1881": 147,
+    "ndps_act_1985": 83, "pmla_2002": 75, "companies_act_2013": 470,
+    "companies_act_1956": 660, "ibc_2016": 255, "pocso_act_2012": 46,
+    "sc_st_act_1989": 23, "dv_act_2005": 37, "uapa_1967": 53,
+    "arbitration_conciliation_act_1996": 87, "hindu_marriage_act_1955": 30,
+    "specific_relief_act_1963": 44, "registration_act_1908": 91,
+    "consumer_protection_act_1986": 31, "consumer_protection_act_2019": 107,
+    "rti_act_2005": 31, "rte_act_2009": 38, "dowry_prohibition_act_1961": 10,
+    "transfer_of_property_act_1882": 137, "limitation_act_1963": 32,
+    "industrial_disputes_act_1947": 40, "hindu_succession_act_1956": 31,
 }
 
 

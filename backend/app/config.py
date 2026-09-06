@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     network_embedding_method: str = "metapath2vec"
     sbert_model_name: str = "all-MiniLM-L6-v2"
 
+    # optional JSON file that extends resources/statute_hierarchy.json (P6)
+    statute_hierarchy_path: str = ""
+
     hybrid_method: str = "learned"       # weighted | learned
     hybrid_alpha: float = 0.5
     hybrid_beta: float = 0.5
