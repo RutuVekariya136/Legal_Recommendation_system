@@ -5,6 +5,9 @@ expert-scored pairs** in `data/raw/` (100 validation + 90 test). Nothing here is
 hand-entered; re-running the script regenerates `data/processed/evaluation_report.json`
 and these tables.
 
+The random-walk network embeddings carry ±0.02–0.03 Spearman run-to-run variance
+(gensim Word2Vec + walk sampling); the numbers below are one representative run.
+
 **Protocol (no leakage).** Text-only, network-only and weighted-hybrid configs are
 scored directly on each split. The learned combiner is evaluated by **5-fold
 cross-validation on validation**, and for the test column is **trained on all 100
@@ -19,10 +22,10 @@ similarity tracks the expert pairwise similarity.
 |---|--:|--:|--:|--:|--:|--:|
 | text: TF-IDF | **+0.76** | +0.66 | 0.119 | −0.02 | −0.01 | 0.189 |
 | text: Doc2Vec *(base paper)* | +0.67 | +0.65 | 0.068 | −0.02 | −0.01 | 0.077 |
-| network: metapath2vec (embedding only) | +0.44 | +0.35 | 0.090 | −0.05 | −0.04 | 0.154 |
-| network: metapath2vec (blend + statute/citation overlap) | +0.48 | +0.37 | 0.112 | −0.05 | −0.04 | 0.173 |
+| network: metapath2vec (embedding only) | +0.43 | +0.33 | 0.091 | −0.03 | −0.04 | 0.157 |
+| network: metapath2vec (blend + statute/citation overlap) | +0.45 | +0.37 | 0.110 | −0.03 | −0.04 | 0.174 |
 | network: node2vec (embedding only) | +0.48 | +0.36 | 0.085 | −0.09 | −0.09 | 0.165 |
-| hybrid: weighted 0.5 / 0.5 | +0.61 | +0.55 | 0.083 | −0.04 | −0.04 | 0.146 |
+| hybrid: weighted 0.5 / 0.5 | +0.59 | +0.54 | 0.083 | −0.03 | −0.04 | 0.148 |
 | hybrid: weighted 0.7 / 0.3 | +0.70 | +0.63 | 0.092 | −0.03 | −0.04 | 0.158 |
 | hybrid: weighted 0.3 / 0.7 | +0.55 | +0.46 | 0.081 | −0.05 | −0.04 | 0.144 |
 | **hybrid: learned linear (text + network)** | **+0.75** | +0.65 | **0.055** | −0.05 | −0.03 | **0.066** |

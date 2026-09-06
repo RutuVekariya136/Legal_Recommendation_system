@@ -171,7 +171,27 @@ def load_hierarchy() -> StatuteHierarchy:
 # Extraction                                                                  #
 # --------------------------------------------------------------------------- #
 
-_LEAD = r"(?:ss?|se[cn]s?|sections?|arts?|articles?|rr?|rules?|cls?|clauses?|paras?|paragraphs?|o|orders?)"
+# Bare single-letter leads "r." / "o." are dropped: "R. 634 (HL)", "(1980) Cr App
+# R. 246" etc. are English law-report citations, not statutory Rule/Order refs.
+# "rule"/"order" spelled out still match.
+_LEAD = r"(?:ss?|se[cn]s?|sections?|arts?|articles?|rules?|cls?|clauses?|paras?|paragraphs?|orders?)"
+
+# Highest real section/article number for the curated codes - anything above is
+# almost certainly a mis-parsed citation page number.
+_SECTION_CEILINGS = {
+    "ipc_1860": 511, "crpc_1973": 484, "crpc_1898": 565, "cpc_1908": 158,
+    "constitution_india": 395, "evidence_act_1872": 167, "contract_act_1872": 266,
+    "income_tax_act_1922": 68, "income_tax_act_1961": 298,
+    "general_clauses_act_1897": 38, "negotiable_instruments_act_1881": 147,
+}
+
+
+def _plausible_section(act_id: Optional[str], number: str) -> bool:
+    ceiling = _SECTION_CEILINGS.get(act_id or "")
+    if ceiling is None:
+        return True
+    digits = re.match(r"\d+", number)
+    return not digits or int(digits.group()) <= ceiling
 _NUM = r"\d+[A-Z]{0,2}"
 _SUB = r"(?:\s*\(\s*[0-9a-zA-Z]{1,4}\s*\))*"
 _ACT_WORD = r"[A-Z][A-Za-z'’.\-]+"
@@ -361,14 +381,25 @@ def resolve_document_statutes(text: str, *, hierarchy: Optional[StatuteHierarchy
                     primary_canon = r.act_canonical
                     break
 
+    # anaphoric "the Code" should point at the most-mentioned procedural Code,
+    # not the primary substantive Act ("the Act").
+    named_all = Counter(r.act_id for r in refs if r.act_id and not r.anaphoric)
+    primary_code_id = next(
+        (aid for aid, _ in named_all.most_common()
+         if "code" in (hierarchy.act_canonical(aid) or "").lower()),
+        None,
+    )
+
     n_anaphoric_resolved = 0
     n_unresolved = 0
     for r in refs:
         if r.anaphoric:
-            if primary_act_id:
-                r.act_id = primary_act_id
-                r.act_canonical = primary_canon
-                r.in_sample_hierarchy = hierarchy.has_act(primary_act_id)
+            wants_code = "code" in (r.act_surface or "").lower()
+            target = (primary_code_id if wants_code and primary_code_id else primary_act_id)
+            if target and (r.kind != "section" or _plausible_section(target, r.number)):
+                r.act_id = target
+                r.act_canonical = hierarchy.act_canonical(target) or primary_canon
+                r.in_sample_hierarchy = hierarchy.has_act(target)
                 n_anaphoric_resolved += 1
             else:
                 n_unresolved += 1
@@ -376,7 +407,10 @@ def resolve_document_statutes(text: str, *, hierarchy: Optional[StatuteHierarchy
             n_unresolved += 1
 
     act_ids = sorted({r.act_id for r in refs if r.act_id})
-    section_keys = sorted({r.section_key for r in refs if r.section_key})
+    section_keys = sorted({
+        r.section_key for r in refs
+        if r.section_key and (r.kind != "section" or _plausible_section(r.act_id, r.number))
+    })
     return DocumentStatutes(
         references=refs,
         primary_act_id=primary_act_id,
