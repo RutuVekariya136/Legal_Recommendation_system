@@ -5,7 +5,7 @@
 A judgment cites earlier cases by **party name** ("Rangachari v. Secretary of
 State"), sometimes followed by a law-reporter citation ("[1953] S.C.R. 589").
 Our corpus document ids look like ``1971_138`` - there is **no lookup table**
-from a party-name citation to a document id (CLAUDE.md §3). So resolution is:
+from a party-name citation to a document id (PROJECT_NOTES.md §3). So resolution is:
 
   1. regex-extract "A v B" mentions (+ optional trailing reporter year),
   2. fuzzy-match the normalised "A v B" string against the cause-title of every

@@ -23,7 +23,7 @@ gensim==4.3.3
 # --- Graph / network (base paper: PCNet, Hier-SPCNet) ---------------------
 networkx>=3.2,<4.0
 
-# --- Citation resolution (fuzzy title matching, see CLAUDE.md §3) ----------
+# --- Citation resolution (fuzzy title matching, see PROJECT_NOTES.md §3) ----------
 rapidfuzz>=3.6,<4.0
 
 # --- PDF / text extraction ------------------------------------------------

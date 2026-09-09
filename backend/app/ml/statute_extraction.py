@@ -3,7 +3,7 @@
     Legal Case -> Citation Extraction -> [Statute Extraction] -> Hier-SPCNet -> ...
 
 Unlike case citations (party names, unresolvable), statute references in these
-judgments ARE reliably regex-extractable (CLAUDE.md §3), e.g.
+judgments ARE reliably regex-extractable (PROJECT_NOTES.md §3), e.g.
 
     "Section 66(1) of the Indian Income-tax Act (XI of 1922)"
     "art. 226 of the Constitution"

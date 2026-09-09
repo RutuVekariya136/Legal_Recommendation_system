@@ -8,7 +8,7 @@ backend/requirements.txt. It verifies, without touching any pipeline code:
   2. Every core third-party package imports and reports a version.
   3. The scientific stack is internally consistent (numpy < 2, gensim imports).
   4. The real dataset is present in data/raw/ with the expected structure
-     and document / expert-pair counts (see CLAUDE.md sec 3).
+     and document / expert-pair counts (see PROJECT_NOTES.md sec 3).
 
 Exit code 0 = environment is ready for Step 2/3. Non-zero = something is off,
 with a printed explanation. No numbers here are fabricated - counts are read
@@ -49,7 +49,7 @@ CORE_PACKAGES: list[tuple[str, str]] = [
     ("httpx", "httpx"),
 ]
 
-# Expected dataset shape - from CLAUDE.md sec 3 / the base paper. Do NOT edit
+# Expected dataset shape - from PROJECT_NOTES.md sec 3 / the base paper. Do NOT edit
 # these to make the check pass; fix the data instead.
 EXPECTED = {
     "validation": {"documents": 143, "pairs": 100},

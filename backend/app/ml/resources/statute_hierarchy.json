@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "description": "HAND-CURATED SAMPLE statute hierarchy for Acts frequently litigated in Indian Supreme Court / High Court judgments (the base-paper demo corpus plus common criminal and commercial statutes). This is NOT the full 12,814-Act statute tree used by Bhattacharya et al. (2022) - that data is not published anywhere (CLAUDE.md section 3). Extend it with STATUTE_HIERARCHY_PATH (see SCALING.md). Any cited Act absent from this file still receives an Act-level node in Hier-SPCNet.",
+    "description": "HAND-CURATED SAMPLE statute hierarchy for Acts frequently litigated in Indian Supreme Court / High Court judgments (the base-paper demo corpus plus common criminal and commercial statutes). This is NOT the full 12,814-Act statute tree used by Bhattacharya et al. (2022) - that data is not published anywhere (PROJECT_NOTES.md section 3). Extend it with STATUTE_HIERARCHY_PATH (see SCALING.md). Any cited Act absent from this file still receives an Act-level node in Hier-SPCNet.",
     "levels": [
       "act",
       "part",

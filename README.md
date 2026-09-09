@@ -1,5 +1,12 @@
 # AI-Based Legal Case Similarity and Recommendation System
 
+[![tests](https://github.com/2005Hari/Legal_Recommendation_system/actions/workflows/ci.yml/badge.svg)](https://github.com/2005Hari/Legal_Recommendation_system/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10–3.12](https://img.shields.io/badge/python-3.10--3.12-blue.svg)](https://www.python.org/)
+[![Backend: FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
+[![Frontend: React + Vite](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb.svg)](https://vite.dev/)
+[![Not legal advice](https://img.shields.io/badge/⚠-not%20legal%20advice-lightgrey.svg)](#scope)
+
 Given a legal case (uploaded PDF/text, or one already in the corpus), recommend the
 most similar prior cases by combining **two signals**:
 
@@ -47,7 +54,7 @@ Real, unredacted Indian Supreme Court judgment text, already in `data/raw/`:
 Demo corpus is ~296 documents (the paper used 53,210 cases / 12,814 Acts — not
 publicly available). The architecture is written so a larger corpus can be dropped
 into `data/raw/` and the embedding/index scripts re-run without redesign.
-See `CLAUDE.md` §3 for documented data limitations (citation resolution needs fuzzy
+See `PROJECT_NOTES.md` §3 for documented data limitations (citation resolution needs fuzzy
 title matching; statute hierarchy ships as a small labeled sample).
 
 ## Repository layout
@@ -152,13 +159,19 @@ CORPUS_SOURCE=db uvicorn app.main:app --app-dir backend
 
 ## Status
 
-All 26 steps complete — see [PROGRESS.md](PROGRESS.md) and [CHANGE_LOG.md](CHANGE_LOG.md).
-185 backend tests + 10 frontend tests pass. Evaluation results and their honest
-interpretation are in [EVALUATION.md](EVALUATION.md) — every metric is computed by
-`scripts/evaluate.py` from the real 190 expert-scored pairs.
+All 26 steps complete, plus a scaling phase — see [PROGRESS.md](PROGRESS.md) and
+[CHANGE_LOG.md](CHANGE_LOG.md). Backend + frontend test suites pass in CI. Evaluation
+results and their honest interpretation are in [EVALUATION.md](EVALUATION.md) — every
+metric is computed by `scripts/evaluate.py` from the real 190 expert-scored pairs.
 
 ## Scope
 
 This project stays "text + network → hybrid legal case similarity." It is **not**
 a chatbot, a generic document-similarity tool, or a legal-advice system. Academic
-final-year project; not legal advice.
+final-year project; **not legal advice**.
+
+## License
+
+[MIT](LICENSE) for the source code. The judgment texts in `data/raw/` are from the
+Bhattacharya et al. (2022) dataset ([Law-AI/document-similarity](https://github.com/Law-AI/document-similarity))
+— public-domain Indian Supreme Court text; cite the paper if you use it.

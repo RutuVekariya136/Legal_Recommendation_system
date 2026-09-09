@@ -1,4 +1,4 @@
-"""Dataset loader for the base-paper corpus (CLAUDE.md §3).
+"""Dataset loader for the base-paper corpus (PROJECT_NOTES.md §3).
 
 Layout on disk (already present, verified):
 

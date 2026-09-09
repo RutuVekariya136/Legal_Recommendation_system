@@ -1,7 +1,7 @@
 """Database engine + session management.
 
 SQLite for local development (file-based, zero setup); the models are written so
-moving to PostgreSQL is only a `DATABASE_URL` change (CLAUDE.md §4).
+moving to PostgreSQL is only a `DATABASE_URL` change (PROJECT_NOTES.md §4).
 """
 
 from __future__ import annotations

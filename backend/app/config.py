@@ -1,7 +1,7 @@
 """Application settings (loaded from backend/.env, overridable by real env vars).
 
 Keeps DB/data locations and model defaults in one place so switching SQLite ->
-PostgreSQL is a `DATABASE_URL` change, not a code change (CLAUDE.md §4).
+PostgreSQL is a `DATABASE_URL` change, not a code change (PROJECT_NOTES.md §4).
 """
 
 from __future__ import annotations

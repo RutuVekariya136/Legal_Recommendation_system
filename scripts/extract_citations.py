@@ -11,7 +11,7 @@ data/processed/citation_report.json. These feed PCNet construction in Step 9.
 
 The resolution rate is REPORTED honestly - most mentions stay unresolved because
 many cited cases are English/foreign or lower-court decisions absent from our
-~295-doc demo corpus (CLAUDE.md §3).
+~295-doc demo corpus (PROJECT_NOTES.md §3).
 
 Usage:
     python scripts/extract_citations.py

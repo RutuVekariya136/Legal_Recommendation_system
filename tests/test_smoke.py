@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-# Counts from CLAUDE.md §3 / the base paper. Read live from disk below.
+# Counts from PROJECT_NOTES.md §3 / the base paper. Read live from disk below.
 EXPECTED = {
     "validation": {"documents": 143, "pairs": 100},
     "test": {"documents": 153, "pairs": 90},
@@ -25,7 +25,7 @@ def test_backend_package_imports():
 
 
 def test_ml_subpackage_imports_without_fastapi():
-    # app.ml must stay decoupled from FastAPI (CLAUDE.md §4). Checked in a fresh
+    # app.ml must stay decoupled from FastAPI (PROJECT_NOTES.md §4). Checked in a fresh
     # subprocess so an earlier test importing app.main can't pollute the result.
     import subprocess
     import sys

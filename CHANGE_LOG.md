@@ -4,7 +4,7 @@
 - Analyzed base paper (Bhattacharya et al., 2022) and confirmed no public model code exists,
   only the dataset repo (Law-AI/document-similarity).
 - Analyzed project PPT for architecture/requirements.
-- Searched GitHub for prior art (none directly reusable — see CLAUDE.md §5).
+- Searched GitHub for prior art (none directly reusable — see PROJECT_NOTES.md §5).
 - Created project directory structure (backend/, frontend/, data/, scripts/, tests/, notebooks/).
 - Copied real dataset into data/raw/validation/ and data/raw/test/ (143+153 docs, 100+90
   expert-scored pairs — verified counts, matches paper).
@@ -473,8 +473,7 @@
 - Pages: Home (live `/stats`), Search (semantic/title/hybrid modes + decade facet bars),
   Case (detail + lazy full text), Recommend (case or upload, k / year filters), Compare
   (pair or upload-vs-target), Upload (PDF/txt → extraction result → "find similar").
-- `.claude/launch.json` for `preview_start`. `frontend/dist` + `.claude/settings.local.json`
-  git-ignored; `package-lock.json` committed.
+- `frontend/dist` git-ignored; `package-lock.json` committed.
 - Verified live against the running backend in a browser: search "medical negligence" →
   the medical-negligence line with snippets + facets; `/recommend/case/2005_S_628` → ranked
   results with score bars; `/compare?a=2005_S_628&b=2010_B_40` → contribution chart

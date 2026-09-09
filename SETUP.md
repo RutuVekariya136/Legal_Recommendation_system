@@ -1,6 +1,6 @@
 # Environment Setup
 
-This is **Step 1** of the incremental build (see `CLAUDE.md` §6-7). It gets the
+This is **Step 1** of the incremental build (see `PROJECT_NOTES.md` §6-7). It gets the
 Python toolchain ready; no pipeline code runs yet.
 
 ## Prerequisites (already verified on the dev machine)

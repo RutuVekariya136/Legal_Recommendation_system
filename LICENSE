@@ -1,0 +1,36 @@
+MIT License
+
+Copyright (c) 2026 Harikrishna N. M.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+The MIT licence above covers the source code of this project.
+
+The judgment texts and expert-similarity scores in `data/raw/` are from the
+dataset released with Bhattacharya, P., Ghosh, K., Pal, A., & Ghosh, S. (2022),
+"Legal Case Document Similarity: You Need Both Network and Text", Information
+Processing & Management 59(6) 103069, available at
+https://github.com/Law-AI/document-similarity. The judgments are public-domain
+Indian Supreme Court text (government works, s.52(1)(q), Copyright Act 1957);
+please cite the paper if you use the dataset.
+
+This project is an academic implementation for research and educational use.
+It is not legal advice.

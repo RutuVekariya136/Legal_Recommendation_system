@@ -2,7 +2,7 @@
 
 Every script / ML module resolves data locations through here so that a larger
 corpus can be swapped in later by changing env vars (or backend/.env), never by
-editing code. Paths default to the layout in CLAUDE.md §4 and are resolved
+editing code. Paths default to the layout in PROJECT_NOTES.md §4 and are resolved
 relative to the repo root unless an absolute path is given.
 """
 

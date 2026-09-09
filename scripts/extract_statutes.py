@@ -10,7 +10,7 @@ Hier-SPCNet construction in Step 9.
 
 Honest scope: the hierarchy is a small hand-curated sample; 274 of ~297 distinct
 Acts here are NOT in it and get a bare Act node (never dropped/invented), per
-CLAUDE.md §3.
+PROJECT_NOTES.md §3.
 
 Usage:
     python scripts/extract_statutes.py

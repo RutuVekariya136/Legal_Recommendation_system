@@ -65,7 +65,7 @@ text-only on rank correlation (0.75) while roughly halving MSE** (0.055 vs 0.119
 re-ranking. This is a weaker form of the paper's result: they report the hybrid
 beating the best text-only method by +11.8% correlation on a **53,210-case**
 corpus with a dense real citation network; our demo corpus has only **24 resolved
-case→case edges** (CLAUDE.md §3), so the network layer is thinner and the gain is
+case→case edges** (PROJECT_NOTES.md §3), so the network layer is thinner and the gain is
 smaller. We do **not** claim the paper's margins.
 
 **Test.** *Every* method — including both trivial baselines — has near-zero

@@ -18,7 +18,7 @@ Both are ``networkx.DiGraph``. Node ids are namespaced: ``case:``, ``act:``,
 ``chap:``, ``sec:``. Every node has a ``ntype`` attribute; every edge an
 ``etype``.
 
-Our demo corpus yields a *sparse* case->case layer (24 edges, CLAUDE.md §3) - the
+Our demo corpus yields a *sparse* case->case layer (24 edges, PROJECT_NOTES.md §3) - the
 statute layer is what carries most of the network signal here. Reported honestly.
 
 No FastAPI / DB dependency.
