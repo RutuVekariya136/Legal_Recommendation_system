@@ -104,7 +104,48 @@ parse or a section-list dump.
 
 ## Hardware
 
-- **Build** (embeddings, graph, index): ~64 GB RAM, ~500 GB disk; 1 GPU if using
-  InLegalBERT (CPU ≈ a day for 35k long docs; GPU ≈ 1–2 h).
-- **Serve**: modest — a FAISS index of 35k × 768d ≈ 100 MB, fits in RAM; sub-second
-  queries once P2 lands.
+- **Serve** (any scale, once built): ~2–6 GB RAM, 1–2 vCPU, no GPU.
+- **Build the ~33k-doc ILDC corpus:**
+  - Apple Silicon (M-series) / a desktop CPU: **~30–60 min** for the default
+    TF-IDF + metapath2vec build.
+  - A U-series laptop (e.g. i7-1255U): ~2–3 h — the random walks over the ~40k-node
+    graph are the bottleneck. Works, just slow.
+  - RAM peak ≈ 6–8 GB (sparse TF-IDF, the NetworkX graph, the walk corpus).
+- **InLegalBERT embeddings (optional):** needs a GPU. On Apple Silicon `torch`
+  auto-uses **MPS** and `sentence-transformers` picks it up — no config. ~10–30 min
+  for 33k docs. CPU-only ≈ several hours.
+- **Lakhs (100k–500k+):** 32–64 GB RAM for the build, PostgreSQL, and the P5
+  `pecanpy` / sparse-CSR graph swap.
+
+## Full run-through: ILDC on a fresh machine
+
+```bash
+git clone https://github.com/2005Hari/Legal_Recommendation_system.git
+cd Legal_Recommendation_system
+
+python3.12 -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+pip install -r backend/requirements-scale.txt              # datasets + faiss-cpu
+python scripts/check_env.py
+
+python scripts/init_db.py --drop
+python scripts/ingest_bulk.py --source hf \
+  --hf-dataset jayadityagandham9/ILDC_35k_COMPLETE \
+  --hf-split train --text-field text --id-field id --corpus ildc
+#   downloads ~765 MB from HuggingFace, keeps ~33,138 after SHA-1 dedup
+
+export CORPUS_SOURCE=db          # Windows: set CORPUS_SOURCE=db  (or prefix each command)
+python scripts/build_all.py      # preprocess -> ... -> embeddings -> indexes
+
+# optional: legal-domain embeddings (uses the Apple-Silicon GPU automatically)
+pip install -r backend/requirements-ml.txt
+python scripts/generate_embeddings.py --method sbert --sbert-model law-ai/InLegalBERT --no-evaluate
+
+# run
+WARM_ON_STARTUP=1 uvicorn app.main:app --app-dir backend          # API  :8000
+cd frontend && npm install && npm run dev                         # UI   :5173
+```
+
+`numpy<2` / `gensim 4.3.3` / `faiss-cpu` all ship arm64 macOS wheels for Python 3.12.
+If `python3.12` is missing on macOS: `brew install python@3.12`.
