@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 import numpy as np
+from scipy import sparse
 
 from app.ml.preprocessing import DEFAULT_CONFIG, PreprocessConfig, preprocess_text
 from app.utils.paths import data_embeddings_dir, data_processed_dir, ensure_dir
@@ -75,7 +76,18 @@ def prepare_documents(
 # Embedder interface                                                          #
 # --------------------------------------------------------------------------- #
 
-def l2_normalize(matrix: np.ndarray) -> np.ndarray:
+def l2_normalize(matrix):
+    """Row-wise L2 normalisation. Accepts a dense ndarray or a scipy sparse
+    matrix (returned sparse - never densified, so a 40k x 50k TF-IDF matrix
+    stays ~a few hundred MB instead of ~8 GB)."""
+    if sparse.issparse(matrix):
+        from sklearn.preprocessing import normalize as _sk_normalize
+
+        return _sk_normalize(matrix.tocsr().astype(np.float32), norm="l2", axis=1, copy=False)
+    return _l2_normalize_dense(matrix)
+
+
+def _l2_normalize_dense(matrix: np.ndarray) -> np.ndarray:
     matrix = np.asarray(matrix, dtype=np.float32)
     norms = np.linalg.norm(matrix, axis=-1, keepdims=True)
     norms[norms == 0] = 1.0
@@ -136,10 +148,12 @@ class TfidfEmbedder(BaseTextEmbedder):
         self._matrix = self._vectorizer.fit_transform(" ".join(d.tokens) for d in docs)
         return self
 
-    def embed_corpus(self) -> np.ndarray:
-        return np.asarray(self._matrix.todense(), dtype=np.float32)
+    def embed_corpus(self):
+        # sparse CSR, already L2-normalised by the vectorizer (norm="l2")
+        return self._matrix.astype(np.float32)
 
     def embed_text(self, tokens: Sequence[str], text: str) -> np.ndarray:
+        # a single query vector densified is only `dim` floats - cheap
         vec = self._vectorizer.transform([" ".join(tokens)])
         return np.asarray(vec.todense(), dtype=np.float32).ravel()
 
@@ -284,6 +298,7 @@ class TextSimilarityIndex:
         self.method = method
         self.doc_ids = list(doc_ids)
         self.matrix = l2_normalize(matrix)
+        self.is_sparse = sparse.issparse(self.matrix)
         self._row = {d: i for i, d in enumerate(self.doc_ids)}
         self.embedder = embedder
         self.embedder_config = embedder_config or (embedder.config() if embedder else {})
@@ -299,7 +314,10 @@ class TextSimilarityIndex:
 
     def save(self, directory: Optional[Path] = None, *, with_embedder: bool = True) -> Path:
         directory = ensure_dir(Path(directory) if directory else data_embeddings_dir() / self.method)
-        np.save(directory / "matrix.npy", self.matrix)
+        if self.is_sparse:
+            sparse.save_npz(directory / "matrix.npz", self.matrix)
+        else:
+            np.save(directory / "matrix.npy", self.matrix)
         embedder_saved = False
         if with_embedder and self.embedder is not None:
             try:
@@ -312,6 +330,7 @@ class TextSimilarityIndex:
         (directory / "index.json").write_text(
             json.dumps({"method": self.method, "doc_ids": self.doc_ids,
                         "embedding_dim": int(self.matrix.shape[1]),
+                        "sparse": self.is_sparse,
                         "embedder_config": self.embedder_config,
                         "embedder_saved": embedder_saved}, indent=2),
             encoding="utf-8",
@@ -322,7 +341,8 @@ class TextSimilarityIndex:
     def load(cls, directory: Path) -> "TextSimilarityIndex":
         directory = Path(directory)
         meta = json.loads((directory / "index.json").read_text(encoding="utf-8"))
-        matrix = np.load(directory / "matrix.npy")
+        npz = directory / "matrix.npz"
+        matrix = sparse.load_npz(npz) if npz.is_file() else np.load(directory / "matrix.npy")
         embedder = None
         emb_path = directory / "embedder.joblib"
         if emb_path.is_file():
@@ -344,13 +364,25 @@ class TextSimilarityIndex:
         return doc_id in self._row
 
     def vector(self, doc_id: str) -> np.ndarray:
-        return self.matrix[self._row[doc_id]]
+        return self._row_vector(doc_id)
 
     def pair_similarity(self, a: str, b: str) -> float:
-        return float(np.dot(self.matrix[self._row[a]], self.matrix[self._row[b]]))
+        i, j = self._row[a], self._row[b]
+        if self.is_sparse:
+            return float(self.matrix[i].multiply(self.matrix[j]).sum())
+        return float(np.dot(self.matrix[i], self.matrix[j]))
+
+    def _dense_query(self, q: np.ndarray) -> np.ndarray:
+        q = np.asarray(q, dtype=np.float32).ravel()
+        n = np.linalg.norm(q)
+        return q / n if n else q
+
+    def _scores_against_all(self, q: np.ndarray) -> np.ndarray:
+        s = self.matrix @ self._dense_query(q)
+        return np.asarray(s).ravel()
 
     def _rank(self, q: np.ndarray, k: int, exclude: set[str]) -> list[Neighbour]:
-        scores = self.matrix @ l2_normalize(q[None, :])[0]
+        scores = self._scores_against_all(q)
         order = np.argsort(-scores)
         out: list[Neighbour] = []
         for i in order:
@@ -362,9 +394,12 @@ class TextSimilarityIndex:
                 break
         return out
 
+    def _row_vector(self, doc_id: str) -> np.ndarray:
+        row = self.matrix[self._row[doc_id]]
+        return row.toarray().ravel() if self.is_sparse else np.asarray(row)
+
     def most_similar(self, doc_id: str, k: int = 10, *, exclude_self: bool = True) -> list[Neighbour]:
-        q = self.matrix[self._row[doc_id]]
-        return self._rank(q, k, {doc_id} if exclude_self else set())
+        return self._rank(self._row_vector(doc_id), k, {doc_id} if exclude_self else set())
 
     def query_vector(self, vector: np.ndarray, k: int = 10, *, exclude: Optional[set[str]] = None) -> list[Neighbour]:
         return self._rank(np.asarray(vector, dtype=np.float32), k, exclude or set())
@@ -382,12 +417,10 @@ class TextSimilarityIndex:
         if self.embedder is None:
             raise RuntimeError("this index was loaded without an embedder; rebuild to query raw text")
         pd = preprocess_text(text, config=config)
-        vec = l2_normalize(np.asarray(self.embedder.embed_text(pd.tokens, pd.clean_text),
-                                     dtype=np.float32)[None, :])[0]
-        scores = self.matrix @ vec
+        scores = self._scores_against_all(self.embedder.embed_text(pd.tokens, pd.clean_text))
         return {d: float(s) for d, s in zip(self.doc_ids, scores)}
 
     def scores_for(self, doc_id: str) -> dict[str, float]:
         """Cosine of an indexed doc against every corpus doc."""
-        scores = self.matrix @ self.matrix[self._row[doc_id]]
+        scores = self._scores_against_all(self._row_vector(doc_id))
         return {d: float(s) for d, s in zip(self.doc_ids, scores)}
