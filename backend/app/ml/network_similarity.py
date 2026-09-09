@@ -127,17 +127,57 @@ def extract_doc_features(
     )
 
 
-def build_feature_store(corpus, *, min_citation_score: float = 90.0) -> dict[str, DocFeatures]:
+def _features_from_cache(doc_id: str) -> Optional[DocFeatures]:
+    """Reuse the per-doc JSON written by extract_citations.py / extract_statutes.py
+    (both must exist) instead of re-extracting - saves a full pass over the corpus."""
+    import json
+
+    from app.utils.paths import data_processed_dir
+
+    proc = data_processed_dir()
+    cp, sp = proc / "citations" / f"{doc_id}.json", proc / "statutes" / f"{doc_id}.json"
+    if not (cp.is_file() and sp.is_file()):
+        return None
+    try:
+        cj = json.loads(cp.read_text(encoding="utf-8"))
+        sj = json.loads(sp.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    raw: set[str] = set()
+    for m in cj.get("mentions", []):
+        parts = str(m.get("raw", "")).split(" v ", 1)
+        if len(parts) == 2:
+            norm = normalize_citation(parts[0], parts[1])
+            if len(norm) >= 10 and " v " in norm:
+                raw.add(norm)
+    return DocFeatures(
+        cited_doc_ids={r["to"] for r in cj.get("resolved", []) if r.get("to") != doc_id},
+        raw_citations=raw,
+        act_ids=set(sj.get("act_ids", [])),
+        section_keys=set(sj.get("section_keys", [])),
+    )
+
+
+def build_feature_store(corpus, *, min_citation_score: float = 90.0,
+                        use_cache: bool = True) -> dict[str, DocFeatures]:
     title_index = CorpusTitleIndex.from_corpus(corpus)
     hierarchy = load_hierarchy()
-    return {
-        doc_id: extract_doc_features(
-            corpus.text(doc_id), title_index=title_index, hierarchy=hierarchy,
-            year=corpus[doc_id].year, self_doc_id=doc_id,
-            min_citation_score=min_citation_score,
-        )
-        for doc_id in corpus.doc_ids
-    }
+    store: dict[str, DocFeatures] = {}
+    n_cached = 0
+    for doc_id in corpus.doc_ids:
+        cached = _features_from_cache(doc_id) if use_cache else None
+        if cached is not None:
+            store[doc_id] = cached
+            n_cached += 1
+        else:
+            store[doc_id] = extract_doc_features(
+                corpus.text(doc_id), title_index=title_index, hierarchy=hierarchy,
+                year=corpus[doc_id].year, self_doc_id=doc_id,
+                min_citation_score=min_citation_score,
+            )
+    if n_cached:
+        print(f"  feature store: reused {n_cached}/{len(store)} from data/processed/ cache")
+    return store
 
 
 def compute_statute_icf(store: dict[str, DocFeatures]) -> dict[str, float]:

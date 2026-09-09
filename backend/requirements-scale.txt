@@ -1,0 +1,14 @@
+# ---------------------------------------------------------------------------
+# Dependencies for running on a large corpus (Phase 2). None are needed for the
+# 296-document demo.
+#
+#   * datasets    -> pull a HuggingFace corpus (ILDC, IL-TUR) in scripts/ingest_bulk.py
+#   * faiss-cpu   -> ANN candidate retrieval (also in requirements-ml.txt); the
+#                    VectorIndex falls back to an exact numpy path without it
+#   * psycopg2-binary -> PostgreSQL driver (also in requirements-pg.txt if present)
+#
+#   pip install -r backend/requirements-scale.txt
+# ---------------------------------------------------------------------------
+
+datasets>=2.19
+faiss-cpu>=1.8,<2.0

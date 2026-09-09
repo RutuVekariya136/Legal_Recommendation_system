@@ -61,11 +61,12 @@ SQLite dev still works with zero setup (`create_all`).
 ## Ingesting
 
 ```bash
-# ILDC via HuggingFace
-pip install datasets
-python scripts/ingest_bulk.py --source hf --hf-dataset Exploration-Lab/IL-TUR \
-    --hf-config cjpe --hf-split train --text-field text --id-field id \
-    --corpus ildc --limit 35000
+# ILDC — 38,904 Supreme Court judgments (1947–2020) via HuggingFace
+pip install -r backend/requirements-scale.txt
+python scripts/init_db.py --drop
+python scripts/ingest_bulk.py --source hf --hf-dataset jayadityagandham9/ILDC_35k_COMPLETE \
+    --hf-split train --text-field text --id-field id --corpus ildc
+# -> ~33k rows after SHA-1 dedup (ILDC has ~15% near-duplicate batch judgments)
 
 # a folder of PDFs / .txt files
 python scripts/ingest_bulk.py --source dir --path ./my_judgments --corpus local

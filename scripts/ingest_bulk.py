@@ -82,7 +82,7 @@ def _rows_from_hf(args):
     try:
         from datasets import load_dataset
     except ImportError:
-        raise SystemExit("`--source hf` needs: pip install datasets")
+        raise SystemExit("`--source hf` needs: pip install -r backend/requirements-scale.txt")
     kw = {}
     if args.hf_config:
         kw["name"] = args.hf_config
