@@ -57,5 +57,10 @@ export const api = {
 };
 
 export function apiError(err) {
-  return err?.response?.data?.detail || err?.message || "Request failed";
+  const detail = err?.response?.data?.detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d) => d?.msg || String(d)).join("; ") || "Request failed";
+  }
+  if (detail && typeof detail === "object") return detail.msg || JSON.stringify(detail);
+  return detail || err?.message || "Request failed";
 }

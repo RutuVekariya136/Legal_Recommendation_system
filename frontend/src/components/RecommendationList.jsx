@@ -4,7 +4,7 @@ import { Badge, ScoreBar } from "./ui.jsx";
 /** One recommendation card. `compareHref` builds the compare link for this pair. */
 function RecoCard({ item, compareHref }) {
   return (
-    <li className="rounded-lg border border-gray-200 bg-white p-4">
+    <li className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
