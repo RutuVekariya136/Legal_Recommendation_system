@@ -15,10 +15,15 @@ export default function Layout({ children }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 bg-slate-900 text-white shadow-sm">
+      <header className="sticky top-0 z-10 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950 text-white shadow-md">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span aria-hidden>⚖️</span> Legal Case Similarity
+            <span aria-hidden className="text-lg">⚖️</span> Legal Case Similarity
+            {stats?.searchable_cases && (
+              <span className="hidden rounded-full bg-indigo-500/20 px-2 py-0.5 text-[11px] font-medium text-indigo-200 sm:inline">
+                {stats.searchable_cases.toLocaleString()} cases indexed
+              </span>
+            )}
           </Link>
           <nav className="flex gap-1">
             <NavLink to="/" end className={navClass}>Home</NavLink>
@@ -49,8 +54,8 @@ export default function Layout({ children }) {
       <footer className="mt-8 border-t border-gray-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-6 text-xs text-gray-400">
           Academic project — hybrid text + citation/statute network similarity over{" "}
-          {stats?.cases ? stats.cases.toLocaleString() : "…"} Indian Supreme Court judgments. Not
-          legal advice.
+          {stats?.searchable_cases ? stats.searchable_cases.toLocaleString() : "…"} Indian Supreme
+          Court judgments. Not legal advice.
         </div>
       </footer>
     </div>

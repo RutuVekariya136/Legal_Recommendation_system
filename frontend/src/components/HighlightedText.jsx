@@ -6,11 +6,12 @@ function esc(s) {
 }
 
 /**
- * Render `text` with two kinds of highlights:
- *  - statute section refs (green)    e.g. "s. 302", "Section 88", "Article 21"
- *  - citation party keywords (amber) e.g. "Bolam", "Hunter"
+ * Render `text` with three kinds of highlights:
+ *  - statute section refs (green)      e.g. "s. 302", "Section 88", "Article 21"
+ *  - citation party keywords (amber)   e.g. "Bolam", "Hunter"
+ *  - shared wording/phrases (blue)     the terms actually driving the text-similarity score
  */
-export default function HighlightedText({ text, sections = [], partyKeywords = [] }) {
+export default function HighlightedText({ text, sections = [], partyKeywords = [], sharedTerms = [] }) {
   const regex = useMemo(() => {
     const parts = [];
     if (sections.length) {
@@ -21,8 +22,12 @@ export default function HighlightedText({ text, sections = [], partyKeywords = [
       const kw = [...new Set(partyKeywords)].map(esc).join("|");
       parts.push(`(?<party>\\b(?:${kw})\\b)`);
     }
+    if (sharedTerms.length) {
+      const terms = [...new Set(sharedTerms)].map(esc).join("|");
+      parts.push(`(?<term>\\b(?:${terms})\\b)`);
+    }
     return parts.length ? new RegExp(parts.join("|"), "gi") : null;
-  }, [sections, partyKeywords]);
+  }, [sections, partyKeywords, sharedTerms]);
 
   if (!regex) return <span className="prose-legal">{text}</span>;
 
@@ -32,12 +37,14 @@ export default function HighlightedText({ text, sections = [], partyKeywords = [
   regex.lastIndex = 0;
   while ((m = regex.exec(text)) !== null) {
     if (m.index > last) out.push(text.slice(last, m.index));
-    const isSec = m.groups?.sec != null;
+    const tone = m.groups?.sec != null ? "sec" : m.groups?.term != null ? "term" : "party";
+    const cls = {
+      sec: "rounded bg-green-200 px-0.5",
+      party: "rounded bg-amber-200 px-0.5",
+      term: "rounded bg-blue-200 px-0.5",
+    }[tone];
     out.push(
-      <mark
-        key={m.index}
-        className={isSec ? "rounded bg-green-200 px-0.5" : "rounded bg-amber-200 px-0.5"}
-      >
+      <mark key={m.index} className={cls}>
         {m[0]}
       </mark>,
     );

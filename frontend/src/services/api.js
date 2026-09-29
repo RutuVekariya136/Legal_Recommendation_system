@@ -33,10 +33,11 @@ export const api = {
         params: { k, year_min: yearMin, year_max: yearMax, min_score: minScore },
       }),
     ),
-  recommendUpload: (uploadId, { k = 10, yearMin, yearMax, minScore } = {}) =>
+  recommendUpload: (uploadId, { k = 10, yearMin, yearMax, minScore, category, categoryQuery } = {}) =>
     unwrap(
       client.post(`/recommend/upload/${encodeURIComponent(uploadId)}`, null, {
-        params: { k, year_min: yearMin, year_max: yearMax, min_score: minScore },
+        params: { k, year_min: yearMin, year_max: yearMax, min_score: minScore,
+                  category, category_query: categoryQuery },
       }),
     ),
 
@@ -47,13 +48,16 @@ export const api = {
   compareUpload: (uploadId, target) =>
     unwrap(client.get(`/compare/upload/${encodeURIComponent(uploadId)}`, { params: { target } })),
 
-  upload: (file, year) => {
+  upload: (file, year, category, categoryQuery) => {
     const form = new FormData();
     form.append("file", file);
     if (year) form.append("year", year);
+    if (category) form.append("category", category);
+    if (categoryQuery) form.append("category_query", categoryQuery);
     return unwrap(client.post("/upload", form, { headers: { "Content-Type": "multipart/form-data" } }));
   },
   getUpload: (id) => unwrap(client.get(`/upload/${encodeURIComponent(id)}`)),
+  categories: () => unwrap(client.get("/categories")),
 };
 
 export function apiError(err) {
