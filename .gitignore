@@ -22,3 +22,8 @@ frontend/.vite/
 frontend/dist/
 .pytest_cache/
 *.egg-info/
+
+# stray DB backups / SQLite journal files (not meant for version control)
+*.db.bak.*
+*.db-shm
+*.db-wal
