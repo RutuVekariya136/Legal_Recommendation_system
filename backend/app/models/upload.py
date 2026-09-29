@@ -22,6 +22,8 @@ class UploadedDocument(Base, TimestampMixin):
     needs_ocr: Mapped[bool] = mapped_column(default=False)
     warnings: Mapped[list] = mapped_column(JSON, default=list)
     year_hint: Mapped[Optional[int]] = mapped_column(Integer)
+    category: Mapped[Optional[str]] = mapped_column(String(64))  # predefined id, or "other"
+    category_query: Mapped[Optional[str]] = mapped_column(String(256))  # free text if category="other"
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<UploadedDocument {self.id} {self.filename!r}>"

@@ -23,6 +23,7 @@ def _to_response(doc, *, preview_len: int = 1200) -> UploadResponse:
         id=doc.id, filename=doc.filename, source_type=doc.source_type,
         char_count=doc.char_count, page_count=doc.page_count, needs_ocr=doc.needs_ocr,
         warnings=doc.warnings or [], year_hint=doc.year_hint,
+        category=doc.category, category_query=doc.category_query,
         created_at=doc.created_at.isoformat() if doc.created_at else None,
         preview=doc.raw_text[:preview_len],
     )
@@ -32,6 +33,8 @@ def _to_response(doc, *, preview_len: int = 1200) -> UploadResponse:
 async def upload_case(
     file: UploadFile = File(...),
     year: int | None = Form(None),
+    category: str | None = Form(None, description="predefined case-type id, or 'other'"),
+    category_query: str | None = Form(None, description="free text if category='other'"),
     db: Session = Depends(get_db),
 ) -> UploadResponse:
     settings = get_settings()
@@ -52,10 +55,18 @@ async def upload_case(
     except ExtractionError as exc:
         raise HTTPException(422, str(exc)) from exc
 
+    # "other" isn't a real corpus category label - store it as a free-text
+    # query instead so the recommender's category_query path handles it.
+    if category == "other":
+        category = None
+    else:
+        category_query = None
+
     doc = repo.create_upload(
         db, filename=file.filename or "upload", source_type=extracted.source_type,
         raw_text=extracted.raw_text, page_count=extracted.page_count,
         needs_ocr=extracted.needs_ocr, warnings=extracted.warnings, year_hint=year,
+        category=category, category_query=category_query,
     )
     return _to_response(doc)
 

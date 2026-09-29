@@ -28,6 +28,7 @@ class Case(Base):
     source_path: Mapped[Optional[str]] = mapped_column(String(512))
     sha1: Mapped[Optional[str]] = mapped_column(String(40), index=True)
     text: Mapped[Optional[str]] = mapped_column(Text)  # full judgment text (scale mode)
+    category: Mapped[Optional[str]] = mapped_column(String(64), index=True)  # see ml/case_category.py
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Case {self.doc_id} ({self.year})>"

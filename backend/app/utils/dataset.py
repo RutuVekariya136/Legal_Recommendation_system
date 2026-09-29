@@ -92,6 +92,7 @@ class CaseDocument:
     year: Optional[int]
     text_value: Optional[str] = None
     title_value: Optional[str] = None
+    category: Optional[str] = None
 
     @cached_property
     def text(self) -> str:
@@ -163,6 +164,9 @@ class Corpus:
 
     def titles(self) -> dict[str, Optional[str]]:
         return {d.doc_id: d.title for d in self.documents.values()}
+
+    def doc_ids_by_category(self, category: str) -> list[str]:
+        return [d.doc_id for d in self.documents.values() if d.category == category]
 
     def iter_texts(self) -> Iterator[tuple[str, str]]:
         for doc_id in self.doc_ids:
@@ -324,6 +328,7 @@ def _load_corpus_from_db(*, verify: bool) -> Corpus:
                 doc_id=row.doc_id, path=None, splits=tuple(row.splits or []),
                 year=row.year, text_value=row.text,
                 title_value=row.title if row.title is not None else "",
+                category=row.category,
             )
     if not docs:
         raise DatasetError(

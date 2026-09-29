@@ -139,12 +139,14 @@ def case_stats(db: Session) -> dict:
 
 def create_upload(db: Session, *, filename: str, source_type: str, raw_text: str,
                   page_count: Optional[int] = None, needs_ocr: bool = False,
-                  warnings: Optional[list] = None, year_hint: Optional[int] = None
+                  warnings: Optional[list] = None, year_hint: Optional[int] = None,
+                  category: Optional[str] = None, category_query: Optional[str] = None,
                   ) -> UploadedDocument:
     doc = UploadedDocument(
         id=uuid.uuid4().hex, filename=filename, source_type=source_type,
         raw_text=raw_text, char_count=len(raw_text), page_count=page_count,
         needs_ocr=needs_ocr, warnings=list(warnings or []), year_hint=year_hint,
+        category=category, category_query=category_query,
     )
     db.add(doc)
     db.commit()

@@ -57,6 +57,8 @@ def recommend_upload(
     year_min: int | None = None,
     year_max: int | None = None,
     min_score: float = Query(0.0, ge=0.0, le=1.0),
+    category: str | None = Query(None, description="restrict to this predefined case category"),
+    category_query: str | None = Query(None, description="restrict to cases whose text contains this phrase (used when category='other')"),
     save: bool = Query(True),
     db: Session = Depends(get_db),
     svc: RecommenderService = Depends(get_service),
@@ -64,15 +66,21 @@ def recommend_upload(
     doc = repo.get_upload(db, upload_id)
     if doc is None:
         raise HTTPException(404, f"upload {upload_id!r} not found")
+    # default to the category chosen at upload time; the caller can still
+    # override (e.g. pass category="" ... ) or the frontend can pass explicit
+    # values to change/clear it without re-uploading.
+    if category is None and category_query is None:
+        category, category_query = doc.category, doc.category_query
     filters = Filters(year_min=year_min, year_max=year_max, min_hybrid_score=min_score)
-    result = svc.recommend_text(doc.raw_text, k=k, year=doc.year_hint, filters=filters)
+    result = svc.recommend_text(doc.raw_text, k=k, year=doc.year_hint, filters=filters,
+                                category=category, category_query=category_query)
 
     run_id = None
     if save:
         run = repo.record_run(
             db, query_type="upload", method=result.method, top_k=k,
             params={"year_min": year_min, "year_max": year_max, "min_score": min_score,
-                    "filename": doc.filename},
+                    "filename": doc.filename, "category": category, "category_query": category_query},
             results=result.results, query_upload_id=upload_id,
         )
         run_id = run.id

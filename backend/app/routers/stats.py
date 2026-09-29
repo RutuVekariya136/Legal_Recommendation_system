@@ -18,7 +18,8 @@ def stats(db: Session = Depends(get_db),
           svc: RecommenderService = Depends(get_service)) -> CorpusStats:
     s = repo.case_stats(db)
     return CorpusStats(
-        cases=s["cases"], with_title=s["with_title"],
+        cases=s["cases"], searchable_cases=len(svc.corpus.doc_ids),
+        with_title=s["with_title"],
         year_min=s["year_min"], year_max=s["year_max"],
         model={
             "text_method": svc.meta.text_method,
