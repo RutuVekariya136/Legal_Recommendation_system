@@ -13,6 +13,7 @@ from functools import lru_cache
 from typing import Optional
 
 from app.config import get_settings
+from app.ml.evaluation import ReliabilityCalibrator
 from app.ml.explainability import Explainer
 from app.ml.hybrid_similarity import HybridSimilarityModel, LearnedCombiner, make_combiner
 from app.ml.network_embedding import NetworkEmbedder, NetworkEmbeddingIndex
@@ -103,8 +104,15 @@ class RecommenderService:
         text_ann = cls._load_or_build_ann(idx_dir / "text", text_index)
         net_ann = cls._load_or_build_ann(idx_dir / "network", net_emb)
 
-        engine = RecommendationEngine(corpus, hybrid, text_ann=text_ann, network_ann=net_ann)
-        explainer = Explainer(corpus, hybrid, title_index=engine.title_index)
+        # Reliability calibration (optional - built by scripts/evaluate.py from
+        # the 100 validation pairs; absent until that's been run at least once).
+        cal_path = hdir / "calibration.joblib"
+        reliability = ReliabilityCalibrator.load(cal_path) if cal_path.is_file() else None
+
+        engine = RecommendationEngine(corpus, hybrid, text_ann=text_ann, network_ann=net_ann,
+                                      reliability=reliability)
+        explainer = Explainer(corpus, hybrid, title_index=engine.title_index,
+                              reliability=reliability)
         meta = ServiceMeta(
             text_method=text_index.method, network_method=net_emb.method,
             hybrid_method=hybrid.combiner.name, n_cases=len(corpus),
@@ -129,8 +137,10 @@ class RecommenderService:
         return self.engine.recommend_for_case(doc_id, k=k, filters=filters)
 
     def recommend_text(self, text: str, *, k: int, year: Optional[int] = None,
-                       filters: Optional[Filters] = None):
-        return self.engine.recommend_for_text(text, k=k, year=year, filters=filters)
+                       filters: Optional[Filters] = None,
+                       category: Optional[str] = None, category_query: Optional[str] = None):
+        return self.engine.recommend_for_text(text, k=k, year=year, filters=filters,
+                                              category=category, category_query=category_query)
 
     def explain_pair(self, a: str, b: str):
         return self.explainer.explain_pair(a, b)

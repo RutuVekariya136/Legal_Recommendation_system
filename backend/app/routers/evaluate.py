@@ -33,13 +33,25 @@ def evaluation_summary() -> dict:
     report = _load_report()
     rows = []
     for r in report.get("results", []):
-        v = r["splits"]["validation"]["correlation"]
-        t = r["splits"]["test"]["correlation"]
-        rows.append({
+        v, t = r["splits"]["validation"], r["splits"]["test"]
+        vc, tc = v["correlation"], t["correlation"]
+        vcl, tcl = v.get("classification"), t.get("classification")
+        row = {
             "config": r["config"], "kind": r["kind"],
-            "validation": {"spearman": v["spearman"], "pearson": v["pearson"], "mse": v["mse"]},
-            "test": {"spearman": t["spearman"], "pearson": t["pearson"], "mse": t["mse"]},
-        })
+            "validation": {"spearman": vc["spearman"], "pearson": vc["pearson"], "mse": vc["mse"]},
+            "test": {"spearman": tc["spearman"], "pearson": tc["pearson"], "mse": tc["mse"]},
+        }
+        if vcl:
+            row["validation"]["classification"] = {
+                "accuracy": vcl["accuracy"], "precision": vcl["precision"],
+                "recall": vcl["recall"], "f1": vcl["f1"], "roc_auc": vcl["roc_auc"],
+            }
+        if tcl:
+            row["test"]["classification"] = {
+                "accuracy": tcl["accuracy"], "precision": tcl["precision"],
+                "recall": tcl["recall"], "f1": tcl["f1"], "roc_auc": tcl["roc_auc"],
+            }
+        rows.append(row)
     return {
         "generated_at": report.get("generated_at"),
         "pairs": report.get("pairs"),

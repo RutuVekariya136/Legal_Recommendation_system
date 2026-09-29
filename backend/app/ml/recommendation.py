@@ -25,6 +25,22 @@ from app.ml.hybrid_similarity import HybridFeatures, HybridSimilarityModel
 from app.ml.network_similarity import extract_doc_features
 from app.ml.statute_extraction import load_hierarchy
 
+# When candidates come from a category/keyword filter rather than ANN (i.e. we
+# didn't already pick them for being textually close), being in the category
+# alone isn't evidence of similarity - require at least this hybrid score
+# unless the caller asks for an explicit (possibly lower) threshold. Matches
+# the frontend's "Moderate similarity" bucket, so a category-filtered result
+# never shows something the UI would itself label as weak.
+DEFAULT_CATEGORY_MIN_SCORE = 0.28
+
+# A result presented as a "similar case" must actually have historically been
+# judged similar more than rarely - being the Kth-highest-scoring candidate
+# isn't enough on its own if the score band it falls in was judged similar by
+# legal experts less often than not. Matches the frontend's "weak match"
+# cutoff (reliabilityCaption in similarity.js), so nothing the UI would itself
+# flag as "almost never judged similar" is shown as a recommendation at all.
+RELIABILITY_FLOOR = 0.15
+
 
 @dataclass
 class Filters:
@@ -60,6 +76,8 @@ class Recommendation:
     shared_citations: list[str]
     cocitation_count: int
     rationale: str
+    reliability: Optional[float] = None
+    reliability_n: Optional[int] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -109,7 +127,8 @@ def _rationale(text_score: float, bd_acts: list[dict], bd_secs: list[dict],
 class RecommendationEngine:
     def __init__(self, corpus, hybrid_model: HybridSimilarityModel, *,
                  title_index: Optional[CorpusTitleIndex] = None, hierarchy=None,
-                 text_ann=None, network_ann=None, candidate_pool: int = 300):
+                 text_ann=None, network_ann=None, candidate_pool: int = 300,
+                 reliability=None):
         self.corpus = corpus
         self.model = hybrid_model
         self.hierarchy = hierarchy or load_hierarchy()
@@ -119,6 +138,22 @@ class RecommendationEngine:
         self.text_ann = text_ann
         self.network_ann = network_ann
         self.candidate_pool = candidate_pool
+        # Optional ReliabilityCalibrator (app.ml.evaluation): maps a hybrid
+        # score to "of past expert-scored pairs the model rated near this
+        # level, what fraction were actually judged similar" - see EVALUATION.md.
+        self.reliability = reliability
+
+    def _reliability_for(self, score: float) -> tuple[Optional[float], Optional[int]]:
+        if self.reliability is None:
+            return None, None
+        return round(self.reliability.reliability(score), 4), self.reliability.n_samples
+
+    def _passes_reliability_floor(self, score: float) -> bool:
+        """False if a calibration is available and says this score band was
+        historically judged similar less than RELIABILITY_FLOOR of the time."""
+        if self.reliability is None:
+            return True
+        return self.reliability.reliability(score) >= RELIABILITY_FLOOR
 
     @property
     def method(self) -> str:
@@ -155,7 +190,7 @@ class RecommendationEngine:
                 n_filtered += 1
                 continue
             score = self.model.score(doc_id, other)
-            if score < filters.min_hybrid_score:
+            if score < filters.min_hybrid_score or not self._passes_reliability_floor(score):
                 n_filtered += 1
                 continue
             scored.append((score, other))
@@ -173,6 +208,7 @@ class RecommendationEngine:
     def _build_case_reco(self, rank, query_id, target, score, text_score) -> Recommendation:
         bd = self.model.network_index.breakdown(query_id, target)
         doc = self.corpus[target]
+        rel, rel_n = self._reliability_for(score)
         return Recommendation(
             rank=rank, doc_id=target, title=doc.title, year=doc.year,
             hybrid_score=round(score, 4),
@@ -184,23 +220,44 @@ class RecommendationEngine:
             rationale=_rationale(text_score, bd.shared_acts, bd.shared_sections,
                                  bd.shared_citation_doc_ids, bd.cocitation_count,
                                  bd.embedding_score),
+            reliability=rel, reliability_n=rel_n,
         )
 
     # -- uploaded / ad-hoc text ---------------------------------
     def recommend_for_text(self, text: str, *, k: int = 10, year: Optional[int] = None,
-                           filters: Optional[Filters] = None) -> RecommendationResult:
+                           filters: Optional[Filters] = None,
+                           category: Optional[str] = None,
+                           category_query: Optional[str] = None) -> RecommendationResult:
         filters = filters or Filters()
         qfeat = extract_doc_features(text, title_index=self.title_index,
                                      hierarchy=self.hierarchy, year=year)
         text_scores = self.model.text_index.query_scores(text)
 
-        candidates = self.corpus.doc_ids
-        if self.text_ann is not None and self.model.text_index.embedder is not None:
+        min_score = filters.min_hybrid_score
+        if category:
+            # hard filter: restrict candidates to this category up front, bypassing
+            # ANN (which is agnostic to category and could otherwise return too few
+            # or zero matches after the fact). text_scores already covers every doc.
+            candidates = self.corpus.doc_ids_by_category(category)
+            if min_score <= 0.0:
+                # being in the same category doesn't mean the case actually
+                # resembles the query - still require some real similarity
+                # (text wording and/or shared statutes/citations), unless the
+                # caller explicitly asked for an unfiltered list (min_score=0).
+                min_score = DEFAULT_CATEGORY_MIN_SCORE
+        elif category_query:
+            needle = category_query.strip().lower()
+            candidates = [d for d in self.corpus.doc_ids if needle in self.corpus.text(d).lower()]
+            if min_score <= 0.0:
+                min_score = DEFAULT_CATEGORY_MIN_SCORE
+        elif self.text_ann is not None and self.model.text_index.embedder is not None:
             from app.ml.preprocessing import preprocess_text
 
             pp = preprocess_text(text)
             qvec = self.model.text_index.embedder.embed_text(pp.tokens, pp.clean_text)
             candidates = [n.doc_id for n in self.text_ann.search(qvec, self.candidate_pool)]
+        else:
+            candidates = self.corpus.doc_ids
 
         scored: list[tuple[float, str, float]] = []
         n_filtered = 0
@@ -217,7 +274,7 @@ class RecommendationEngine:
                 text_score=t, network_score=net, embedding_score=0.0,
                 statute_overlap=stat, citation_overlap=cite, cocitation_count=0,
             ))
-            if hyb < filters.min_hybrid_score:
+            if hyb < min_score or not self._passes_reliability_floor(hyb):
                 n_filtered += 1
                 continue
             scored.append((hyb, other, t))
@@ -227,6 +284,7 @@ class RecommendationEngine:
         for rank, (hyb, other, t) in enumerate(scored[:k], 1):
             bd = self.model.network_index.query_breakdown(qfeat, other, embedding_score=0.0)
             doc = self.corpus[other]
+            rel, rel_n = self._reliability_for(hyb)
             results.append(Recommendation(
                 rank=rank, doc_id=other, title=doc.title, year=doc.year,
                 hybrid_score=round(hyb, 4), text_score=round(t, 4),
@@ -236,6 +294,7 @@ class RecommendationEngine:
                 shared_citations=bd.shared_citation_doc_ids, cocitation_count=0,
                 rationale=_rationale(t, bd.shared_acts, bd.shared_sections,
                                      bd.shared_citation_doc_ids, 0, 0.0),
+                reliability=rel, reliability_n=rel_n,
             ))
         return RecommendationResult(
             query="<uploaded text>", query_in_corpus=False, method=self.method, k=k,

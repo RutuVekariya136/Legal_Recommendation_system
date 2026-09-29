@@ -366,6 +366,30 @@ class TextSimilarityIndex:
     def vector(self, doc_id: str) -> np.ndarray:
         return self._row_vector(doc_id)
 
+    def embed_query(self, text: str, *, config: PreprocessConfig = DEFAULT_CONFIG) -> np.ndarray:
+        """Embed raw text (e.g. an upload) into this index's vector space."""
+        if self.embedder is None:
+            raise RuntimeError("this index was loaded without an embedder; rebuild to query raw text")
+        pd = preprocess_text(text, config=config)
+        return np.asarray(self.embedder.embed_text(pd.tokens, pd.clean_text), dtype=np.float32).ravel()
+
+    def top_shared_terms(self, vec_a: np.ndarray, vec_b: np.ndarray, top_n: int = 8) -> list[str]:
+        """The words/phrases whose combined weight in both vectors is highest -
+        i.e. what's actually driving the cosine similarity between them. Only
+        meaningful for TF-IDF (its dimensions are literal vocabulary terms);
+        dense embedders like SBERT/Doc2Vec have no such interpretation, so
+        this returns [] for those rather than guessing."""
+        if not isinstance(self.embedder, TfidfEmbedder) or self.embedder._vectorizer is None:
+            return []
+        a = vec_a.toarray().ravel() if sparse.issparse(vec_a) else np.asarray(vec_a).ravel()
+        b = vec_b.toarray().ravel() if sparse.issparse(vec_b) else np.asarray(vec_b).ravel()
+        prod = a * b
+        if not np.any(prod > 0):
+            return []
+        vocab = self.embedder._vectorizer.get_feature_names_out()
+        order = np.argsort(-prod)[:top_n]
+        return [vocab[i] for i in order if prod[i] > 0]
+
     def pair_similarity(self, a: str, b: str) -> float:
         i, j = self._row[a], self._row[b]
         if self.is_sparse:

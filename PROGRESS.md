@@ -11,7 +11,7 @@ demo per `DEMO.md`.
 [✓]  3. Dataset Setup            app/utils/dataset.py, ingest_data.py, manifest (295 uniques)
 [✓]  4. Data Preprocessing       app/ml/preprocessing.py, preprocess.py
 [✓]  5. PDF/Text Extraction      app/ml/text_extraction.py, extract_text.py (--selftest 99.8%)
-[✓]  6. Citation Extraction      app/ml/citation_extraction.py (24 case→case edges @90; §3 limitation)
+[✓]  6. Citation Extraction      app/ml/citation_extraction.py (24 edges @296 docs / 1,266 @33k docs; title-coverage-limited, see EVALUATION.md)
 [✓]  7. Statute Extraction       app/ml/statute_extraction.py + curated sample hierarchy (12,324 refs)
 [✓]  8. Text Similarity          TF-IDF / Doc2Vec / SBERT, generate_embeddings.py
 [✓]  9. Network Construction     PCNet + Hier-SPCNet (3,108 nodes / 6,725 edges) + ICF
@@ -38,13 +38,17 @@ demo per `DEMO.md`.
 
 | | Validation (n=100) | Test (n=90) |
 |---|---|---|
-| text: TF-IDF | Spearman **+0.76** | ≈ 0 |
-| network: metapath2vec (blend) | Spearman +0.48 | ≈ 0 |
-| **hybrid: learned linear** | Spearman **+0.75**, MSE **0.055** | ≈ 0 |
+| text: TF-IDF | Spearman **+0.78** | ≈ 0 |
+| text: SBERT *(our enhancement)* | Spearman **+0.80**, but worse ranking (MRR 0.58 vs 0.66) | ≈ 0 |
+| network: metapath2vec (blend) | Spearman +0.51 | ≈ 0 |
+| **hybrid: learned linear (TF-IDF)** | Spearman **+0.76**, MSE **0.050** | ≈ 0 |
 | baseline: year proximity / random | +0.29 / −0.13 | ≈ 0 |
 
 Test-split correlation is ≈ 0 for *every* method incl. trivial baselines — a property
-of that 90-pair split (range restriction; 31 pairs touch a graph-isolated case; the
+of that 90-pair split (range restriction; 18 pairs touch a graph-isolated case; the
 clean subset is still ≈ 0). Ranking sanity stays non-zero on test. We do **not** claim
 the paper's +11.8 % hybrid gain — their corpus has 53k cases and a dense citation graph;
-ours has 295 cases / 24 case→case edges. Full analysis: `EVALUATION.md`.
+the 296-doc evaluation corpus has 24 case→case edges (at the full 33,433-doc scale the
+app actually serves, that's now 1,266 edges — see EVALUATION.md's "Citation resolution
+at scale" for why it's still capped and what would remove the cap). Full analysis:
+`EVALUATION.md`.

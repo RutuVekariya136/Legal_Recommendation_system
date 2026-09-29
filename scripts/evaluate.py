@@ -27,8 +27,11 @@ sys.path.insert(0, str(_REPO_ROOT / "backend"))
 import numpy as np  # noqa: E402
 
 from app.ml.evaluation import (  # noqa: E402
-    correlation_metrics, diagnose_split, evaluate_pairwise, ranking_sanity,
+    ReliabilityCalibrator, classification_metrics, correlation_metrics, diagnose_split,
+    evaluate_pairwise, ranking_sanity,
 )
+
+GOLD_THRESHOLD = 0.5  # matches ranking_sanity's own "similar" cutoff, for consistency
 from app.ml.hybrid_similarity import HybridFeatures, HybridSimilarityModel, LearnedCombiner, WeightedSumCombiner  # noqa: E402
 from app.ml.network_embedding import NetworkEmbeddingIndex  # noqa: E402
 from app.ml.network_similarity import NetworkSimilarityIndex  # noqa: E402
@@ -52,6 +55,9 @@ def _load_text(method: str, corpus):
 
 def _corr_and_rank(score_fn, corpus, pairs, split):
     cm = evaluate_pairwise(score_fn, pairs)
+    pred = [float(score_fn(p.doc_id_1, p.doc_id_2)) for p in pairs]
+    gold = [float(p.score) for p in pairs]
+    clsm = classification_metrics(pred, gold, gold_threshold=GOLD_THRESHOLD)
     # rank_fn: order all corpus docs by score_fn(query, other) desc
     doc_ids = corpus.doc_ids
 
@@ -60,7 +66,8 @@ def _corr_and_rank(score_fn, corpus, pairs, split):
         return [o for _, o in scored]
 
     rm = ranking_sanity(rank_fn, pairs, corpus)
-    return {"split": split, "correlation": cm.to_dict(), "ranking": rm.to_dict()}
+    return {"split": split, "correlation": cm.to_dict(), "ranking": rm.to_dict(),
+            "classification": clsm.to_dict()}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -75,6 +82,8 @@ def main(argv: list[str] | None = None) -> int:
     ei = NetworkEmbeddingIndex.load(EMB / "network_metapath2vec")
     nsi = NetworkSimilarityIndex.load(EMB / "network_similarity", ei, corpus=corpus)
 
+    si = TextSimilarityIndex.load(EMB / "sbert") if (EMB / "sbert" / "index.json").is_file() else None
+
     configs: list[tuple[str, str, callable]] = []  # (name, kind, score_fn)
 
     # -- text-only --
@@ -82,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     if not args.quick and (EMB / "doc2vec" / "index.json").is_file():
         d2v = TextSimilarityIndex.load(EMB / "doc2vec")
         configs.append(("text: doc2vec", "text", lambda a, b: d2v.pair_similarity(a, b)))
+    if si is not None:
+        configs.append(("text: sbert (our enhancement)", "text", lambda a, b: si.pair_similarity(a, b)))
 
     # -- network-only --
     nsi.method = "embedding"
@@ -136,19 +147,49 @@ def main(argv: list[str] | None = None) -> int:
     test_feats = [hm.features(p.doc_id_1, p.doc_id_2) for p in test]
     test_gold = [p.score for p in test]
 
+    reliability_report = None
     for name, (mdl, feats) in feat_specs.items():
         lc = LearnedCombiner(model=mdl, features=feats)
         cv_pred = lc.cross_val_predict(val_feats, val_gold, folds=5)
         lc.fit(val_feats, val_gold)
         test_pred = [lc.score(f) for f in test_feats]
+
+        if name == "hybrid: learned linear (text+net)":
+            # This is the config the deployed RecommenderService actually
+            # uses (TF-IDF text + network, learned linear) - calibrate on its
+            # out-of-sample validation predictions and save alongside it.
+            cal = ReliabilityCalibrator(gold_threshold=GOLD_THRESHOLD).fit(cv_pred, val_gold)
+            cal.save(EMB / "hybrid" / "calibration.joblib")
+            # honest check: does the SAME calibration hold up on test? (it may
+            # not, given §3's test-split diagnosis - report it either way)
+            test_check = classification_metrics(
+                [cal.reliability(s) for s in test_pred], test_gold, gold_threshold=GOLD_THRESHOLD,
+                pred_threshold=0.5,
+            )
+            reliability_report = {
+                "fitted_on": "5-fold CV predictions, 100 validation pairs",
+                "gold_threshold": GOLD_THRESHOLD,
+                "curve": cal.curve(),
+                "test_split_check": {
+                    "note": "applying the validation-fitted calibration to the test split - "
+                            "a sanity check, not a validated guarantee (see §3's test-split diagnosis)",
+                    **test_check.to_dict(),
+                },
+            }
+            print(f"  saved reliability calibration -> {EMB / 'hybrid' / 'calibration.joblib'}")
+
         entry = {
             "config": name, "kind": "learned",
             "splits": {
                 "validation": {"split": "validation",
                                "correlation": correlation_metrics(cv_pred, val_gold).to_dict(),
+                               "classification": classification_metrics(
+                                   cv_pred, val_gold, gold_threshold=GOLD_THRESHOLD).to_dict(),
                                "note": "5-fold CV"},
                 "test": {"split": "test",
                          "correlation": correlation_metrics(test_pred, test_gold).to_dict(),
+                         "classification": classification_metrics(
+                             test_pred, test_gold, gold_threshold=GOLD_THRESHOLD).to_dict(),
                          "note": "trained on all validation"},
             },
         }
@@ -159,6 +200,42 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {name:<38} "
               f"val rho={entry['splits']['validation']['correlation']['spearman']:+.3f}  "
               f"test rho={entry['splits']['test']['correlation']['spearman']:+.3f}")
+
+    # -- sbert-based learned hybrid (same protocol, swap text index) --
+    if si is not None:
+        hm_sbert = HybridSimilarityModel(si, nsi, LearnedCombiner(model="linear"))
+        sbert_feat_specs = {
+            "hybrid: learned linear (sbert+net)": ("linear", ("text_score", "network_score")),
+        }
+        val_feats_s = [hm_sbert.features(p.doc_id_1, p.doc_id_2) for p in val]
+        test_feats_s = [hm_sbert.features(p.doc_id_1, p.doc_id_2) for p in test]
+        for name, (mdl, feats) in sbert_feat_specs.items():
+            lc = LearnedCombiner(model=mdl, features=feats)
+            cv_pred = lc.cross_val_predict(val_feats_s, val_gold, folds=5)
+            lc.fit(val_feats_s, val_gold)
+            test_pred = [lc.score(f) for f in test_feats_s]
+            entry = {
+                "config": name, "kind": "learned",
+                "splits": {
+                    "validation": {"split": "validation",
+                                   "correlation": correlation_metrics(cv_pred, val_gold).to_dict(),
+                                   "classification": classification_metrics(
+                                       cv_pred, val_gold, gold_threshold=GOLD_THRESHOLD).to_dict(),
+                                   "note": "5-fold CV"},
+                    "test": {"split": "test",
+                             "correlation": correlation_metrics(test_pred, test_gold).to_dict(),
+                             "classification": classification_metrics(
+                                 test_pred, test_gold, gold_threshold=GOLD_THRESHOLD).to_dict(),
+                             "note": "trained on all validation"},
+                },
+            }
+            if mdl == "linear":
+                entry["coef_"] = {f: round(c, 4) for f, c in zip(feats, np.ravel(lc._model.coef_))}
+                entry["intercept_"] = round(float(lc._model.intercept_), 4)
+            results.append(entry)
+            print(f"  {name:<38} "
+                  f"val rho={entry['splits']['validation']['correlation']['spearman']:+.3f}  "
+                  f"test rho={entry['splits']['test']['correlation']['spearman']:+.3f}")
 
     # -- diagnosis --
     isolated = set(ei.missing)
@@ -191,6 +268,7 @@ def main(argv: list[str] | None = None) -> int:
                     "validation, trained-on-all-validation for test.",
         "results": results,
         "diagnosis": diag,
+        "reliability": reliability_report,
     }
     out = data_processed_dir() / "evaluation_report.json"
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")

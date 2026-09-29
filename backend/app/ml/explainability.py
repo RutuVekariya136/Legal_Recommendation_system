@@ -71,6 +71,9 @@ class SimilarityExplanation:
     shared_raw_citations: list[str]
     shared_cited_cases: list[SharedCitedCase]
     cocitation_count: int
+    shared_terms: list[str]
+    reliability: Optional[float]
+    reliability_n: Optional[int]
     summary: str
 
     def to_dict(self) -> dict:
@@ -170,11 +173,14 @@ def _summary(ex: "SimilarityExplanation") -> str:
 
 class Explainer:
     def __init__(self, corpus, hybrid_model: HybridSimilarityModel, *,
-                 hierarchy: Optional[StatuteHierarchy] = None, title_index=None):
+                 hierarchy: Optional[StatuteHierarchy] = None, title_index=None,
+                 reliability=None):
         self.corpus = corpus
         self.model = hybrid_model
         self.hierarchy = hierarchy or load_hierarchy()
         self._title_index = title_index
+        # Optional ReliabilityCalibrator - see RecommendationEngine's docstring.
+        self.reliability = reliability
 
     @property
     def title_index(self):
@@ -193,7 +199,9 @@ class Explainer:
             "embedding_score": bd["embedding_score"], "statute_overlap": bd["statute_overlap"],
             "citation_overlap": bd["citation_overlap"], "cocitation_count": bd["cocitation_count"],
         }
-        return self._assemble(query_id, target_id, True, hx.method, hx.hybrid_score, feats, bd)
+        ti = self.model.text_index
+        terms = ti.top_shared_terms(ti.vector(query_id), ti.vector(target_id)) if ti.has(query_id) and ti.has(target_id) else []
+        return self._assemble(query_id, target_id, True, hx.method, hx.hybrid_score, feats, bd, terms)
 
     # -- uploaded text -------------------------------------------
     def explain_text(self, text: str, target_id: str, *, year: Optional[int] = None
@@ -215,17 +223,24 @@ class Explainer:
             "embedding_score": 0.0, "statute_overlap": bd["statute_overlap"],
             "citation_overlap": bd["citation_overlap"], "cocitation_count": 0,
         }
+        ti = self.model.text_index
+        terms = ti.top_shared_terms(ti.embed_query(text), ti.vector(target_id)) if ti.has(target_id) else []
         return self._assemble("<uploaded>", target_id, False, self.model.combiner.name,
-                              round(hyb, 4), feats, bd)
+                              round(hyb, 4), feats, bd, terms)
 
     # -- shared assembly --------------------------------------
-    def _assemble(self, query_id, target_id, in_corpus, method, hybrid_score, feats, bd
+    def _assemble(self, query_id, target_id, in_corpus, method, hybrid_score, feats, bd, shared_terms
                   ) -> SimilarityExplanation:
         cited = []
         for did in bd.get("shared_citation_doc_ids", []):
             doc = self.corpus[did] if did in self.corpus else None
             cited.append(SharedCitedCase(did, getattr(doc, "title", None),
                                          getattr(doc, "year", None)))
+        if self.reliability is not None:
+            reliability = round(self.reliability.reliability(hybrid_score), 4)
+            reliability_n = self.reliability.n_samples
+        else:
+            reliability = reliability_n = None
         ex = SimilarityExplanation(
             query_id=query_id, target_id=target_id, query_in_corpus=in_corpus, method=method,
             hybrid_score=round(hybrid_score, 4),
@@ -239,6 +254,8 @@ class Explainer:
             shared_raw_citations=list(bd.get("shared_raw_citations", [])),
             shared_cited_cases=cited,
             cocitation_count=int(feats["cocitation_count"]),
+            shared_terms=list(shared_terms),
+            reliability=reliability, reliability_n=reliability_n,
             summary="",
         )
         ex.summary = _summary(ex)

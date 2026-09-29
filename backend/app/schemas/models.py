@@ -28,6 +28,7 @@ class ReadyResponse(BaseModel):
 
 class CorpusStats(BaseModel):
     cases: int
+    searchable_cases: int
     with_title: int
     year_min: Optional[int]
     year_max: Optional[int]
@@ -74,6 +75,8 @@ class RecommendationItem(BaseModel):
     shared_citations: list[str] = []
     cocitation_count: int = 0
     rationale: str = ""
+    reliability: Optional[float] = None
+    reliability_n: Optional[int] = None
 
 
 class RecommendResponse(BaseModel):
@@ -107,6 +110,8 @@ class UploadResponse(BaseModel):
     needs_ocr: bool = False
     warnings: list[str] = []
     year_hint: Optional[int] = None
+    category: Optional[str] = None
+    category_query: Optional[str] = None
     created_at: Optional[str] = None
     preview: str = ""
 
@@ -151,4 +156,7 @@ class ExplanationResponse(BaseModel):
     shared_raw_citations: list[str]
     shared_cited_cases: list[dict]
     cocitation_count: int
+    shared_terms: list[str] = []
+    reliability: Optional[float] = None
+    reliability_n: Optional[int] = None
     summary: str

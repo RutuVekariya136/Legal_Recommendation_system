@@ -6,6 +6,8 @@ import numpy as np
 import pytest
 
 from app.ml.evaluation import (
+    ReliabilityCalibrator,
+    classification_metrics,
     correlation_metrics,
     diagnose_split,
     evaluate_pairwise,
@@ -58,6 +60,46 @@ def test_evaluate_pairwise_uses_score_fn():
     assert m.n == 4 and m.pearson == pytest.approx(1.0)
 
 
+# -- classification -------------------------------------------------
+
+def test_classification_perfect_separation():
+    # gold >= 0.5 -> similar; predictions perfectly agree at the same threshold
+    pred = [0.1, 0.9, 0.2, 0.8]
+    gold = [0.1, 0.9, 0.3, 0.7]
+    m = classification_metrics(pred, gold, gold_threshold=0.5)
+    assert m.accuracy == pytest.approx(1.0)
+    assert m.precision == pytest.approx(1.0)
+    assert m.recall == pytest.approx(1.0)
+    assert m.f1 == pytest.approx(1.0)
+    assert m.roc_auc == pytest.approx(1.0)
+    assert m.positives == 2
+
+
+def test_classification_worst_case_inverted():
+    pred = [0.9, 0.1]  # inverted relative to gold
+    gold = [0.1, 0.9]
+    m = classification_metrics(pred, gold, gold_threshold=0.5)
+    assert m.accuracy == pytest.approx(0.0)
+    assert m.roc_auc == pytest.approx(0.0)
+
+
+def test_classification_single_class_gold_gives_nan_auc_not_crash():
+    # every gold label below threshold -> only one class in y_true
+    m = classification_metrics([0.1, 0.2, 0.3], [0.1, 0.2, 0.3], gold_threshold=0.9)
+    assert m.positives == 0
+    assert np.isnan(m.roc_auc)
+    assert m.accuracy == pytest.approx(1.0)  # all correctly predicted "not similar"
+
+
+def test_classification_custom_pred_threshold():
+    pred = [0.6, 0.4]
+    gold = [0.9, 0.1]
+    # at pred_threshold=0.5 this would be perfect; at 0.7 both are classified "not similar"
+    m = classification_metrics(pred, gold, gold_threshold=0.5, pred_threshold=0.7)
+    assert m.pred_threshold == 0.7
+    assert m.recall == pytest.approx(0.0)
+
+
 # -- ranking ----------------------------------------------------
 
 def test_ranking_sanity_finds_partner_at_top():
@@ -99,3 +141,53 @@ def test_real_validation_correlation_is_positive_for_tfidf():
     m = evaluate_pairwise(lambda a, b: ti.pair_similarity(a, b),
                           corpus.pairs_by_split["validation"])
     assert m.n == 100 and m.spearman > 0.5  # documented: ~0.76
+
+
+# -- reliability calibration ----------------------------------
+
+def test_reliability_calibrator_monotonic_and_bounded():
+    rng = np.random.default_rng(0)
+    pred = rng.uniform(0, 1, 200)
+    gold = np.clip(pred + rng.normal(0, 0.1, 200), 0, 1)  # noisy but correlated
+    cal = ReliabilityCalibrator(gold_threshold=0.5).fit(pred, gold)
+    lo, hi = cal.reliability(0.05), cal.reliability(0.95)
+    assert 0.0 <= lo <= hi <= 1.0
+    assert cal.n_samples == 200
+
+
+def test_reliability_calibrator_separates_low_from_high():
+    # logistic (not isotonic) scaling: won't hit exact 0/1, but must clearly
+    # separate a low-scoring region from a high-scoring one, monotonically.
+    pred = [0.1, 0.15, 0.2, 0.8, 0.85, 0.9]
+    gold = [0.1, 0.15, 0.2, 0.8, 0.85, 0.9]  # low half never similar, high half always
+    cal = ReliabilityCalibrator(gold_threshold=0.5).fit(pred, gold)
+    lo, hi = cal.reliability(0.1), cal.reliability(0.9)
+    assert lo < 0.3
+    assert hi > 0.7
+    assert lo < hi
+
+
+def test_reliability_calibrator_distinguishes_nearby_scores():
+    # the whole point of switching off isotonic: no flat plateaus - two
+    # different scores in the same rough band still get different values.
+    rng = np.random.default_rng(1)
+    pred = rng.uniform(0, 1, 100)
+    gold = np.clip(pred + rng.normal(0, 0.15, 100), 0, 1)
+    cal = ReliabilityCalibrator(gold_threshold=0.5).fit(pred, gold)
+    assert cal.reliability(0.40) != cal.reliability(0.42)
+
+
+def test_reliability_calibrator_save_load_roundtrip(tmp_path):
+    cal = ReliabilityCalibrator().fit([0.1, 0.5, 0.9], [0.1, 0.5, 0.9])
+    path = tmp_path / "calibration.joblib"
+    cal.save(path)
+    loaded = ReliabilityCalibrator.load(path)
+    assert loaded.n_samples == 3
+    assert loaded.reliability(0.9) == pytest.approx(cal.reliability(0.9))
+
+
+def test_reliability_curve_has_requested_points():
+    cal = ReliabilityCalibrator().fit([0.0, 0.5, 1.0], [0.0, 0.5, 1.0])
+    curve = cal.curve(n_points=5)
+    assert len(curve) == 5
+    assert curve[0]["score"] == 0.0 and curve[-1]["score"] == 1.0

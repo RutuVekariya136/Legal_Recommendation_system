@@ -61,6 +61,139 @@ def evaluate_pairwise(score_fn: Callable[[str, str], float], pairs) -> Correlati
 
 
 # --------------------------------------------------------------------------- #
+# Classification metrics (binarized view of the continuous similarity task)   #
+# --------------------------------------------------------------------------- #
+
+@dataclass
+class ClassificationMetrics:
+    n: int
+    gold_threshold: float
+    pred_threshold: float
+    positives: int
+    accuracy: float
+    precision: float
+    recall: float
+    f1: float
+    roc_auc: float
+
+    def to_dict(self) -> dict:
+        return {k: (round(v, 4) if isinstance(v, float) else v) for k, v in self.__dict__.items()}
+
+
+def classification_metrics(
+    pred: Sequence[float], gold: Sequence[float], *,
+    gold_threshold: float = 0.5, pred_threshold: Optional[float] = None,
+) -> ClassificationMetrics:
+    """Accuracy / precision / recall / F1 / ROC-AUC for the "is this pair
+    similar?" yes-or-no question, binarizing the expert score at
+    `gold_threshold` and the model's score at `pred_threshold` (default: the
+    same value - a principled a-priori choice, not tuned on this data, since
+    a threshold picked to maximise F1 on the same set it's scored on would be
+    a form of leakage). ROC-AUC needs no threshold at all and is the more
+    honest single number for a continuous score - report it alongside these,
+    not instead of the correlation metrics above, which are what this task
+    actually optimizes for.
+    """
+    from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
+
+    p = np.asarray(pred, dtype=np.float64)
+    g = np.asarray(gold, dtype=np.float64)
+    y_true = (g >= gold_threshold).astype(int)
+    thr = gold_threshold if pred_threshold is None else pred_threshold
+    y_pred = (p >= thr).astype(int)
+
+    try:
+        auc = float(roc_auc_score(y_true, p))
+    except ValueError:
+        auc = float("nan")  # only one class present in y_true
+
+    return ClassificationMetrics(
+        n=len(p), gold_threshold=gold_threshold, pred_threshold=thr,
+        positives=int(y_true.sum()),
+        accuracy=float(accuracy_score(y_true, y_pred)),
+        precision=float(precision_score(y_true, y_pred, zero_division=0)),
+        recall=float(recall_score(y_true, y_pred, zero_division=0)),
+        f1=float(f1_score(y_true, y_pred, zero_division=0)),
+        roc_auc=auc,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Reliability calibration (per-result "how often has a score like this been    #
+# right historically")                                                       #
+# --------------------------------------------------------------------------- #
+
+class ReliabilityCalibrator:
+    """Maps a raw hybrid score to "of past expert-scored pairs the model rated
+    around this level, what fraction did legal experts actually judge similar
+    (gold >= threshold)?" - via logistic (Platt) scaling on out-of-sample
+    predictions, so a *specific* recommended case can carry a real,
+    data-backed reliability figure instead of a fabricated per-pair number
+    (there is no ground truth for any single new pair).
+
+    Logistic rather than isotonic regression deliberately: isotonic is a step
+    function, and with only ~100 calibration points it produces wide flat
+    plateaus - many visibly different scores landing on the exact same
+    percentage, which reads as a bug even though each value is real. A
+    2-parameter sigmoid is the standard, more data-efficient choice for small
+    samples (see e.g. Platt 1999; scikit-learn's own calibration guidance
+    recommends sigmoid over isotonic below roughly 1,000 samples): every
+    distinct score gets its own smoothly-varying value, monotonically
+    increasing, with no plateaus.
+
+    Deliberately not a claim of statistical precision: n is small (currently
+    100 validation pairs), so the number is reported alongside its sample
+    size everywhere it's shown, never alone.
+    """
+
+    def __init__(self, gold_threshold: float = 0.5):
+        self.gold_threshold = gold_threshold
+        self.n_samples = 0
+        self._model = None
+
+    def fit(self, pred: Sequence[float], gold: Sequence[float]) -> "ReliabilityCalibrator":
+        from sklearn.linear_model import LogisticRegression
+
+        p = np.asarray(pred, dtype=np.float64).reshape(-1, 1)
+        y = (np.asarray(gold, dtype=np.float64) >= self.gold_threshold).astype(int)
+        self.n_samples = len(p)
+        # Light regularization (C=10, i.e. weak): with n~100 the default C=1.0
+        # over-shrinks toward 0.5, muting the very separation we're fitting
+        # this for. Still regularized enough not to blow up on a handful of
+        # points during tests.
+        self._model = LogisticRegression(C=10.0)
+        self._model.fit(p, y)
+        return self
+
+    def reliability(self, score: float) -> float:
+        """P(this score's pair would be judged "similar") per validation calibration."""
+        if self._model is None:
+            raise RuntimeError("ReliabilityCalibrator.reliability() before fit()/load()")
+        return float(np.clip(self._model.predict_proba([[score]])[0, 1], 0.0, 1.0))
+
+    def curve(self, n_points: int = 11) -> list[dict]:
+        """Sampled (score -> reliability) points, for display as a small chart/table."""
+        xs = np.linspace(0.0, 1.0, n_points)
+        return [{"score": round(float(x), 2), "reliability": round(self.reliability(x), 4)} for x in xs]
+
+    def save(self, path) -> None:
+        import joblib
+
+        joblib.dump({"gold_threshold": self.gold_threshold, "n_samples": self.n_samples,
+                     "model": self._model}, path)
+
+    @classmethod
+    def load(cls, path) -> "ReliabilityCalibrator":
+        import joblib
+
+        d = joblib.load(path)
+        obj = cls(gold_threshold=d["gold_threshold"])
+        obj.n_samples = d["n_samples"]
+        obj._model = d["model"]
+        return obj
+
+
+# --------------------------------------------------------------------------- #
 # Pairwise ranking sanity                                                     #
 # --------------------------------------------------------------------------- #
 
