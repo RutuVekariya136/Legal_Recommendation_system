@@ -27,3 +27,6 @@ frontend/dist/
 *.db.bak.*
 *.db-shm
 *.db-wal
+
+# GitHub Release export (uploaded as an asset, not committed)
+data/export/*

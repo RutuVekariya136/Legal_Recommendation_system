@@ -147,6 +147,17 @@ CORPUS_SOURCE=db python scripts/build_all.py
 CORPUS_SOURCE=db uvicorn app.main:app --app-dir backend
 ```
 
+**Full 33,433-judgment corpus (ready-made).** The export is published as an asset of the
+[GitHub Release](../../releases) rather than committed, because it is about 180 MB compressed.
+Download `legal_corpus.jsonl.gz` from the release, then:
+
+```bash
+python scripts/import_corpus_export.py --file legal_corpus.jsonl.gz
+CORPUS_SOURCE=db python scripts/build_all.py
+```
+
+To make a new export from your own database: `python scripts/export_corpus.py`.
+
 ### API (`/api`, full docs at `/docs`)
 
 `GET /health` · `GET /health/ready` · `GET /stats`
