@@ -45,11 +45,13 @@ def evaluation_summary() -> dict:
             row["validation"]["classification"] = {
                 "accuracy": vcl["accuracy"], "precision": vcl["precision"],
                 "recall": vcl["recall"], "f1": vcl["f1"], "roc_auc": vcl["roc_auc"],
+                "pred_threshold": vcl["pred_threshold"],
             }
         if tcl:
             row["test"]["classification"] = {
                 "accuracy": tcl["accuracy"], "precision": tcl["precision"],
                 "recall": tcl["recall"], "f1": tcl["f1"], "roc_auc": tcl["roc_auc"],
+                "pred_threshold": tcl["pred_threshold"],
             }
         rows.append(row)
     return {
@@ -59,3 +61,13 @@ def evaluation_summary() -> dict:
         "rows": rows,
         "diagnosis": report.get("diagnosis"),
     }
+
+
+@router.get("/parameters")
+def parameter_impact() -> dict:
+    """Measured effect of supplying each case parameter on the accuracy of the
+    true match (produced by scripts/parameter_ablation.py)."""
+    path = data_processed_dir() / "parameter_ablation.json"
+    if not path.is_file():
+        raise HTTPException(404, "no parameter-impact report yet - run `python scripts/parameter_ablation.py`")
+    return json.loads(path.read_text(encoding="utf-8"))

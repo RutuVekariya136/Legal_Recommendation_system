@@ -138,9 +138,11 @@ class RecommenderService:
 
     def recommend_text(self, text: str, *, k: int, year: Optional[int] = None,
                        filters: Optional[Filters] = None,
-                       category: Optional[str] = None, category_query: Optional[str] = None):
+                       category: Optional[str] = None, category_query: Optional[str] = None,
+                       details: Optional[dict] = None, detail_bonus: float = 0.0):
         return self.engine.recommend_for_text(text, k=k, year=year, filters=filters,
-                                              category=category, category_query=category_query)
+                                              category=category, category_query=category_query,
+                                              details=details, detail_bonus=detail_bonus)
 
     def explain_pair(self, a: str, b: str):
         return self.explainer.explain_pair(a, b)

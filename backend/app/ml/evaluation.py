@@ -118,6 +118,26 @@ def classification_metrics(
     )
 
 
+def youden_threshold(pred: Sequence[float], gold: Sequence[float], *,
+                      gold_threshold: float = 0.5) -> float:
+    """The classification threshold maximizing Youden's J (TPR - FPR) on the
+    ROC curve - the standard, principled alternative to an arbitrary fixed
+    cutoff when a model's raw score isn't centered on 0.5. Unlike tuning for
+    F1 on the same set being reported (leakage), this must be computed on a
+    split distinct from the one `classification_metrics()` is later called
+    on for reporting - callers should fit this on out-of-sample CV
+    predictions and apply the resulting threshold elsewhere, never fit and
+    evaluate on the same points.
+    """
+    from sklearn.metrics import roc_curve
+
+    p = np.asarray(pred, dtype=np.float64)
+    y_true = (np.asarray(gold, dtype=np.float64) >= gold_threshold).astype(int)
+    fpr, tpr, thresholds = roc_curve(y_true, p)
+    j = tpr - fpr
+    return float(thresholds[int(np.argmax(j))])
+
+
 # --------------------------------------------------------------------------- #
 # Reliability calibration (per-result "how often has a score like this been    #
 # right historically")                                                       #

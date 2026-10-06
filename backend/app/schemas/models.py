@@ -77,6 +77,7 @@ class RecommendationItem(BaseModel):
     rationale: str = ""
     reliability: Optional[float] = None
     reliability_n: Optional[int] = None
+    detail_matches: dict[str, bool] = {}
 
 
 class RecommendResponse(BaseModel):
@@ -88,6 +89,23 @@ class RecommendResponse(BaseModel):
     n_filtered_out: int
     run_id: Optional[str] = None
     results: list[RecommendationItem]
+    precedent_summary: list[dict] = []
+    details_used: dict[str, str] = {}
+    detail_issues: dict[str, str] = {}
+    fallback_note: Optional[str] = None
+    comparison: Optional[dict] = None
+
+
+class RecommendDetailsRequest(BaseModel):
+    details: dict[str, str] = {}
+
+
+class ParameterListResponse(BaseModel):
+    category: Optional[str] = None
+    category_label: Optional[str] = None
+    category_inferred: bool = False
+    coverage_sample: int = 0
+    parameters: list[dict] = []
 
 
 class RecommendTextRequest(BaseModel):

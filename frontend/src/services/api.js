@@ -33,13 +33,17 @@ export const api = {
         params: { k, year_min: yearMin, year_max: yearMax, min_score: minScore },
       }),
     ),
-  recommendUpload: (uploadId, { k = 10, yearMin, yearMax, minScore, category, categoryQuery } = {}) =>
+  recommendUpload: (uploadId, { k = 10, yearMin, yearMax, minScore, category, categoryQuery, details } = {}) =>
     unwrap(
-      client.post(`/recommend/upload/${encodeURIComponent(uploadId)}`, null, {
+      client.post(`/recommend/upload/${encodeURIComponent(uploadId)}`, details && Object.keys(details).length ? { details } : null, {
         params: { k, year_min: yearMin, year_max: yearMax, min_score: minScore,
                   category, category_query: categoryQuery },
       }),
     ),
+
+  uploadParameters: (uploadId, category) =>
+    unwrap(client.get(`/upload/${encodeURIComponent(uploadId)}/parameters`, { params: { category } })),
+  parameterImpact: () => unwrap(client.get("/evaluate/parameters")),
 
   egoGraph: (docId, { similar = 6, statutes = 8 } = {}) =>
     unwrap(client.get(`/graph/case/${encodeURIComponent(docId)}`, { params: { similar, statutes } })),

@@ -28,7 +28,7 @@ import numpy as np  # noqa: E402
 
 from app.ml.evaluation import (  # noqa: E402
     ReliabilityCalibrator, classification_metrics, correlation_metrics, diagnose_split,
-    evaluate_pairwise, ranking_sanity,
+    evaluate_pairwise, ranking_sanity, youden_threshold,
 )
 
 GOLD_THRESHOLD = 0.5  # matches ranking_sanity's own "similar" cutoff, for consistency
@@ -153,6 +153,13 @@ def main(argv: list[str] | None = None) -> int:
         cv_pred = lc.cross_val_predict(val_feats, val_gold, folds=5)
         lc.fit(val_feats, val_gold)
         test_pred = [lc.score(f) for f in test_feats]
+        # Threshold tuned via Youden's J on the out-of-sample CV predictions
+        # only (never on test, never on in-sample predictions) - a
+        # principled alternative to an arbitrary fixed 0.5 cutoff for a raw
+        # score that isn't centered on 0.5. Applied as-is to test (no
+        # re-tuning there), matching the "trained on all validation" protocol
+        # already used for the combiner itself.
+        cls_thr = youden_threshold(cv_pred, val_gold, gold_threshold=GOLD_THRESHOLD)
 
         if name == "hybrid: learned linear (text+net)":
             # This is the config the deployed RecommenderService actually
@@ -184,13 +191,17 @@ def main(argv: list[str] | None = None) -> int:
                 "validation": {"split": "validation",
                                "correlation": correlation_metrics(cv_pred, val_gold).to_dict(),
                                "classification": classification_metrics(
-                                   cv_pred, val_gold, gold_threshold=GOLD_THRESHOLD).to_dict(),
-                               "note": "5-fold CV"},
+                                   cv_pred, val_gold, gold_threshold=GOLD_THRESHOLD,
+                                   pred_threshold=cls_thr).to_dict(),
+                               "note": "5-fold CV; threshold tuned via Youden's J on these same "
+                                       "out-of-sample CV predictions"},
                 "test": {"split": "test",
                          "correlation": correlation_metrics(test_pred, test_gold).to_dict(),
                          "classification": classification_metrics(
-                             test_pred, test_gold, gold_threshold=GOLD_THRESHOLD).to_dict(),
-                         "note": "trained on all validation"},
+                             test_pred, test_gold, gold_threshold=GOLD_THRESHOLD,
+                             pred_threshold=cls_thr).to_dict(),
+                         "note": "trained on all validation; threshold carried over from "
+                                 "validation CV, not re-tuned on test"},
             },
         }
         if mdl == "linear":
@@ -214,19 +225,24 @@ def main(argv: list[str] | None = None) -> int:
             cv_pred = lc.cross_val_predict(val_feats_s, val_gold, folds=5)
             lc.fit(val_feats_s, val_gold)
             test_pred = [lc.score(f) for f in test_feats_s]
+            cls_thr = youden_threshold(cv_pred, val_gold, gold_threshold=GOLD_THRESHOLD)
             entry = {
                 "config": name, "kind": "learned",
                 "splits": {
                     "validation": {"split": "validation",
                                    "correlation": correlation_metrics(cv_pred, val_gold).to_dict(),
                                    "classification": classification_metrics(
-                                       cv_pred, val_gold, gold_threshold=GOLD_THRESHOLD).to_dict(),
-                                   "note": "5-fold CV"},
+                                       cv_pred, val_gold, gold_threshold=GOLD_THRESHOLD,
+                                       pred_threshold=cls_thr).to_dict(),
+                                   "note": "5-fold CV; threshold tuned via Youden's J on these "
+                                           "same out-of-sample CV predictions"},
                     "test": {"split": "test",
                              "correlation": correlation_metrics(test_pred, test_gold).to_dict(),
                              "classification": classification_metrics(
-                                 test_pred, test_gold, gold_threshold=GOLD_THRESHOLD).to_dict(),
-                             "note": "trained on all validation"},
+                                 test_pred, test_gold, gold_threshold=GOLD_THRESHOLD,
+                                 pred_threshold=cls_thr).to_dict(),
+                             "note": "trained on all validation; threshold carried over from "
+                                     "validation CV, not re-tuned on test"},
                 },
             }
             if mdl == "linear":

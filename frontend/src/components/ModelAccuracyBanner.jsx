@@ -18,7 +18,9 @@ export default function ModelAccuracyBanner() {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-xs text-gray-600">
       <span className="font-medium text-gray-700">Overall model accuracy</span>
-      <span title="On the 100 expert-scored validation pairs, at a 0.5 similarity threshold.">
+      <span
+        title={`On the 100 expert-scored validation pairs, at a classification threshold of ${c.pred_threshold} (picked to maximize Youden's J on out-of-sample cross-validation predictions, never on the same points being scored).`}
+      >
         Accuracy <strong className="text-slate-700">{Math.round(c.accuracy * 100)}%</strong>
       </span>
       <span title="Correlation with expert similarity judgments (Spearman rho) - the primary metric for this task.">

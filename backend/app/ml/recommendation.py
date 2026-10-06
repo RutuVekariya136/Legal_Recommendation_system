@@ -33,15 +33,6 @@ from app.ml.statute_extraction import load_hierarchy
 # never shows something the UI would itself label as weak.
 DEFAULT_CATEGORY_MIN_SCORE = 0.28
 
-# A result presented as a "similar case" must actually have historically been
-# judged similar more than rarely - being the Kth-highest-scoring candidate
-# isn't enough on its own if the score band it falls in was judged similar by
-# legal experts less often than not. Matches the frontend's "weak match"
-# cutoff (reliabilityCaption in similarity.js), so nothing the UI would itself
-# flag as "almost never judged similar" is shown as a recommendation at all.
-RELIABILITY_FLOOR = 0.15
-
-
 @dataclass
 class Filters:
     year_min: Optional[int] = None
@@ -92,11 +83,52 @@ class RecommendationResult:
     n_candidates: int
     n_filtered_out: int
     results: list[Recommendation]
+    precedent_summary: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         d = asdict(self)
         d["results"] = [r.to_dict() for r in self.results]
         return d
+
+
+def _precedent_summary(hierarchy, results: list[Recommendation]) -> list[dict]:
+    """Aggregate shared statute sections/Acts across the Top-K results into a
+    single "what was applied in similar cases" summary - e.g. "Section 53A of
+    the Transfer of Property Act appears in 6 of your 10 most similar cases."
+    Purely a tally over data already computed per-result (no new extraction);
+    this is NOT a verdict/outcome prediction, just a citation-frequency summary.
+    """
+    k = len(results)
+    if k == 0:
+        return []
+    counts: dict[tuple[str, Optional[str]], int] = {}
+    for r in results:
+        seen_this_result: set[tuple[str, Optional[str]]] = set()
+        for sec in r.shared_sections:
+            key = sec["section_key"]
+            act_id = key.split("::s")[0]
+            num = sec.get("number") or key.split("::s")[-1]
+            seen_this_result.add((act_id, num))
+        for act in r.shared_acts:
+            pair = (act["act_id"], None)
+            if any(a == act["act_id"] for a, n in seen_this_result if n is not None):
+                continue  # already represented by a shared section of this Act
+            seen_this_result.add(pair)
+        for pair in seen_this_result:
+            counts[pair] = counts.get(pair, 0) + 1
+
+    out = []
+    for (act_id, num), count in counts.items():
+        out.append({
+            "act_id": act_id,
+            "act_name": hierarchy.act_canonical(act_id),
+            "section_number": num,
+            "section_title": hierarchy.section_title(act_id, num) if num else None,
+            "count": count,
+            "of_k": k,
+        })
+    out.sort(key=lambda d: -d["count"])
+    return out[:8]
 
 
 def _rationale(text_score: float, bd_acts: list[dict], bd_secs: list[dict],
@@ -148,13 +180,6 @@ class RecommendationEngine:
             return None, None
         return round(self.reliability.reliability(score), 4), self.reliability.n_samples
 
-    def _passes_reliability_floor(self, score: float) -> bool:
-        """False if a calibration is available and says this score band was
-        historically judged similar less than RELIABILITY_FLOOR of the time."""
-        if self.reliability is None:
-            return True
-        return self.reliability.reliability(score) >= RELIABILITY_FLOOR
-
     @property
     def method(self) -> str:
         return self.model.combiner.name
@@ -190,7 +215,7 @@ class RecommendationEngine:
                 n_filtered += 1
                 continue
             score = self.model.score(doc_id, other)
-            if score < filters.min_hybrid_score or not self._passes_reliability_floor(score):
+            if score < filters.min_hybrid_score:
                 n_filtered += 1
                 continue
             scored.append((score, other))
@@ -203,6 +228,7 @@ class RecommendationEngine:
         return RecommendationResult(
             query=doc_id, query_in_corpus=True, method=self.method, k=k,
             n_candidates=len(scored), n_filtered_out=n_filtered, results=results,
+            precedent_summary=_precedent_summary(self.hierarchy, results),
         )
 
     def _build_case_reco(self, rank, query_id, target, score, text_score) -> Recommendation:
@@ -227,7 +253,9 @@ class RecommendationEngine:
     def recommend_for_text(self, text: str, *, k: int = 10, year: Optional[int] = None,
                            filters: Optional[Filters] = None,
                            category: Optional[str] = None,
-                           category_query: Optional[str] = None) -> RecommendationResult:
+                           category_query: Optional[str] = None,
+                           details: Optional[dict] = None,
+                           detail_bonus: float = 0.0) -> RecommendationResult:
         filters = filters or Filters()
         qfeat = extract_doc_features(text, title_index=self.title_index,
                                      hierarchy=self.hierarchy, year=year)
@@ -274,7 +302,11 @@ class RecommendationEngine:
                 text_score=t, network_score=net, embedding_score=0.0,
                 statute_overlap=stat, citation_overlap=cite, cocitation_count=0,
             ))
-            if hyb < min_score or not self._passes_reliability_floor(hyb):
+            if details and detail_bonus:
+                from app.ml.case_parameters import match_details
+                matched = match_details(self.corpus.text(other), details)
+                hyb = min(1.0, hyb + detail_bonus * sum(matched.values()) / len(details))
+            if hyb < min_score:
                 n_filtered += 1
                 continue
             scored.append((hyb, other, t))
@@ -299,6 +331,7 @@ class RecommendationEngine:
         return RecommendationResult(
             query="<uploaded text>", query_in_corpus=False, method=self.method, k=k,
             n_candidates=len(scored), n_filtered_out=n_filtered, results=results,
+            precedent_summary=_precedent_summary(self.hierarchy, results),
         )
 
     # -- pairwise detail ------------------------------------

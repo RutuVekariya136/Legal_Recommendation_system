@@ -9,9 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
+from app.ml.case_category import LABELS, classify
+from app.ml.case_parameters import corpus_coverage, detect
 from app.ml.text_extraction import ExtractionError, extract_text
-from app.schemas.models import UploadResponse
+from app.schemas.models import ParameterListResponse, UploadResponse
 from app.services import repository as repo
+from app.services.recommender import RecommenderService, get_service
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
@@ -85,3 +88,29 @@ def get_upload_text(upload_id: str, db: Session = Depends(get_db)) -> dict:
     if doc is None:
         raise HTTPException(404, f"upload {upload_id!r} not found")
     return {"id": doc.id, "filename": doc.filename, "text": doc.raw_text}
+
+
+@router.get("/{upload_id}/parameters", response_model=ParameterListResponse)
+def get_parameters(
+    upload_id: str,
+    category: str | None = None,
+    db: Session = Depends(get_db),
+    svc: RecommenderService = Depends(get_service),
+) -> ParameterListResponse:
+    """The generalized parameters for this case's type, marking which the text
+    already states, plus how routinely each appears in same-type corpus cases."""
+    doc = repo.get_upload(db, upload_id)
+    if doc is None:
+        raise HTTPException(404, f"upload {upload_id!r} not found")
+    cat = category if category not in (None, "", "any", "other") else doc.category
+    inferred = False
+    if not cat:
+        cat, inferred = classify(doc.raw_text), True
+    params = detect(doc.raw_text, cat)
+    cov = corpus_coverage(svc.corpus, cat)
+    for p in params:
+        p["corpus_coverage"] = cov.get(p["id"])
+    return ParameterListResponse(
+        category=cat, category_label=LABELS.get(cat) if cat else None, category_inferred=inferred,
+        coverage_sample=int(cov.get("_n", 0)), parameters=params,
+    )

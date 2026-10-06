@@ -4,7 +4,7 @@ import { Badge, ScoreBar } from "./ui.jsx";
 import { readableAct, bestSimilarityLevel, reliabilityCaption } from "../utils/similarity.js";
 
 /** One recommendation card. `compareHref` builds the compare link for this pair. */
-function RecoCard({ item, compareHref }) {
+function RecoCard({ item, compareHref, detailLabels }) {
   const [showDetails, setShowDetails] = useState(false);
   const level = bestSimilarityLevel(item.hybrid_score, item.reliability);
   const reliabilityCap = reliabilityCaption(item.reliability, item.reliability_n);
@@ -53,6 +53,20 @@ function RecoCard({ item, compareHref }) {
         </div>
       )}
 
+      {detailLabels && Object.keys(item.detail_matches || {}).length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1 text-xs">
+          <span className="text-gray-400">Your details this case also mentions:</span>
+          {Object.entries(item.detail_matches).map(([id, ok]) => (
+            <span
+              key={id}
+              className={`rounded-full px-2 py-0.5 ${ok ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-400"}`}
+            >
+              {ok ? "✓" : "✗"} {detailLabels[id] || id}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="mt-3 flex items-center gap-3 text-sm">
         <Link to={compareHref(item.doc_id)} className="text-blue-600 hover:underline">
           See why it's similar →
@@ -79,12 +93,12 @@ function RecoCard({ item, compareHref }) {
   );
 }
 
-export default function RecommendationList({ results, compareHref }) {
+export default function RecommendationList({ results, compareHref, detailLabels }) {
   if (!results?.length) return <p className="text-sm text-gray-500">No results.</p>;
   return (
     <ul className="space-y-3">
       {results.map((item) => (
-        <RecoCard key={item.doc_id} item={item} compareHref={compareHref} />
+        <RecoCard key={item.doc_id} item={item} compareHref={compareHref} detailLabels={detailLabels} />
       ))}
     </ul>
   );

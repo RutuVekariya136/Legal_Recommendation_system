@@ -2,11 +2,14 @@ import { api } from "../services/api.js";
 import { useAsync } from "../hooks/useAsync.js";
 import { ErrorBox, Loading } from "../components/ui.jsx";
 
-function Cell({ v, signed = true }) {
+function Cell({ v, signed = true, title }) {
   if (v == null || Number.isNaN(v)) return <td className="px-2 text-right text-gray-300">—</td>;
   const strong = v >= 0.6;
   return (
-    <td className={`px-2 text-right tabular-nums ${strong ? "font-semibold text-slate-800" : "text-gray-600"}`}>
+    <td
+      className={`px-2 text-right tabular-nums ${strong ? "font-semibold text-slate-800" : "text-gray-600"}`}
+      title={title}
+    >
       {signed && v >= 0 ? "+" : ""}
       {v.toFixed(2)}
     </td>
@@ -62,10 +65,15 @@ export default function EvaluationPage() {
               </h2>
               <p className="text-xs text-gray-500">
                 Binarizing the continuous similarity score into "similar / not similar" at a
-                threshold of 0.5 on both the expert score and the model's score (a fixed,
-                a-priori choice — not tuned on this data). ROC-AUC needs no threshold and is the
-                more honest single number for a continuous score; the rest are shown because
-                they're the standard, requested metrics for a yes/no framing of this task.
+                threshold of 0.5 on the expert score. For the learned-combiner configs (which fit
+                parameters via cross-validation already), the model's own cutoff is additionally
+                tuned via Youden's J statistic on the same out-of-sample CV predictions being
+                reported — never on test, never on in-sample predictions — since a raw learned
+                score isn't inherently centered on 0.5; hover a row's accuracy cell to see its
+                actual threshold. Text/network/baseline configs have no fitted parameters to
+                cross-validate a threshold over, so they keep the fixed, a-priori 0.5 cutoff.
+                ROC-AUC needs no threshold at all and is the more honest single number for a
+                continuous score, regardless of config.
               </p>
               <table className="mt-2 w-full text-sm">
                 <thead>
@@ -90,12 +98,20 @@ export default function EvaluationPage() {
                         <td className="py-1 pr-2">
                           {row.config} <span className="text-xs text-gray-400">({row.kind})</span>
                         </td>
-                        <Cell v={v.accuracy} signed={false} />
+                        <Cell
+                          v={v.accuracy}
+                          signed={false}
+                          title={v.pred_threshold != null ? `classification threshold: ${v.pred_threshold}` : undefined}
+                        />
                         <Cell v={v.precision} signed={false} />
                         <Cell v={v.recall} signed={false} />
                         <Cell v={v.f1} signed={false} />
                         <Cell v={v.roc_auc} signed={false} />
-                        <Cell v={t?.accuracy} signed={false} />
+                        <Cell
+                          v={t?.accuracy}
+                          signed={false}
+                          title={t?.pred_threshold != null ? `classification threshold: ${t.pred_threshold}` : undefined}
+                        />
                         <Cell v={t?.f1} signed={false} />
                         <Cell v={t?.roc_auc} signed={false} />
                       </tr>

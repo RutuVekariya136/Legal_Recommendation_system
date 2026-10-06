@@ -50,6 +50,9 @@ class _Corpus:
     def text(self, k):
         return self._d[k]._text
 
+    def doc_ids_by_category(self, category):
+        return []
+
 
 DOCS = [
     _Doc("a", 1990, "A v State", "s. 302 of the Indian Penal Code murder accused evidence"),
@@ -328,3 +331,33 @@ def test_evaluate_endpoint(client, tmp_path_factory, monkeypatch):
     s = client.get("/api/evaluate/summary").json()
     assert s["rows"][0]["config"] == "text: tfidf"
     assert s["rows"][0]["validation"]["spearman"] == 0.76
+
+
+# -- manual case details (place, weapon, time ...) ------------
+
+def test_recommend_with_details_returns_comparison_and_matches(client):
+    up = client.post("/api/upload", files={"file": ("x.txt", (
+        "E. F. Rao v State. This appeal concerns s. 302 of the Indian Penal Code and circumstantial "
+        "evidence in a murder trial. The accused was convicted.").encode(), "text/plain")},
+        data={"category": "criminal_appeal"}).json()
+    uid = up["id"]
+    plain = client.post(f"/api/recommend/upload/{uid}", params={"k": 2}).json()
+    assert plain["comparison"] is None and plain["details_used"] == {}
+
+    r = client.post(f"/api/recommend/upload/{uid}", params={"k": 2},
+                    json={"details": {"weapon": "Axe", "bogus": "ignored"}}).json()
+    assert r["details_used"] == {"weapon": "Axe"}
+    assert r["comparison"]["n_details"] == 1
+    assert set(r["comparison"]["before"]) == {"top_doc", "top_score", "top_accuracy", "mean_accuracy"}
+    assert all("weapon" in it["detail_matches"] for it in r["results"])
+
+
+def test_parameters_endpoint_lists_category_parameters(client):
+    up = client.post("/api/upload", files={"file": ("x.txt", b"This appeal concerns Section 302 of the Indian Penal Code.", "text/plain")},
+                     data={"category": "criminal_appeal"}).json()
+    j = client.get(f"/api/upload/{up['id']}/parameters").json()
+    assert j["category"] == "criminal_appeal"
+    ids = {p["id"] for p in j["parameters"]}
+    assert {"statutes", "weapon", "motive"} <= ids
+    assert next(p for p in j["parameters"] if p["id"] == "statutes")["present"] is True
+    assert client.get("/api/upload/nope/parameters").status_code == 404

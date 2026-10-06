@@ -1,3 +1,4 @@
+import UploadParametersPanel from "../components/UploadParametersPanel.jsx";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, apiError } from "../services/api.js";
@@ -221,13 +222,14 @@ export default function UploadPage() {
           <p className="prose-legal mt-3 max-h-40 overflow-auto rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
             {result.preview}…
           </p>
-          <button
-            onClick={() => navigate(`/recommend/upload/${result.id}`)}
-            className="mt-4 rounded-lg bg-slate-800 px-5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700"
-          >
-            Find similar cases →
-          </button>
         </div>
+      )}
+      {result && (
+        <UploadParametersPanel
+          uploadId={result.id}
+          category={result.category}
+          onContinue={(details) => navigate(`/recommend/upload/${result.id}`, { state: { details } })}
+        />
       )}
     </div>
   );

@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../services/api.js";
 import { useAsync } from "../hooks/useAsync.js";
 import { ErrorBox, Loading } from "../components/ui.jsx";
 import RecommendationList from "../components/RecommendationList.jsx";
 import ModelAccuracyBanner from "../components/ModelAccuracyBanner.jsx";
+import PrecedentSummary from "../components/PrecedentSummary.jsx";
+import CaseDetailsForm from "../components/CaseDetailsForm.jsx";
 
 export default function RecommendPage({ kind }) {
   const { docId, uploadId } = useParams();
@@ -15,15 +17,25 @@ export default function RecommendPage({ kind }) {
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [categoryQuery, setCategoryQuery] = useState("");
   const { data: categories } = useAsync(() => api.categories(), []);
+  // manually entered case details (place, weapon, time ...) - applied on demand
+  const location = useLocation();
+  const [details, setDetails] = useState(location.state?.details || {});
+  const { data: paramData } = useAsync(
+    () => (kind === "upload" ? api.uploadParameters(uploadId, category === "any" ? undefined : category || undefined) : Promise.resolve(null)),
+    [kind, uploadId, category],
+  );
+  const { data: impact } = useAsync(() => (kind === "upload" ? api.parameterImpact().catch(() => null) : Promise.resolve(null)), [kind]);
+  const detailLabels = Object.fromEntries((paramData?.parameters || []).map((p) => [p.id, p.label]));
 
   const { data, loading, error } = useAsync(() => {
     const opts = { k, yearMin: yearMin || undefined };
     if (kind === "upload") {
       opts.category = category === "any" ? "" : category || undefined;
       opts.categoryQuery = category === "other" ? categoryQuery || undefined : undefined;
+      opts.details = details;
     }
     return kind === "upload" ? api.recommendUpload(uploadId, opts) : api.recommendCase(docId, opts);
-  }, [kind, docId, uploadId, k, yearMin, category, categoryQuery]);
+  }, [kind, docId, uploadId, k, yearMin, category, categoryQuery, JSON.stringify(details)]);
 
   const compareHref =
     kind === "upload"
@@ -107,6 +119,20 @@ export default function RecommendPage({ kind }) {
         )}
       </div>
 
+      {kind === "upload" && (
+        <CaseDetailsForm
+          parameters={paramData}
+          applied={details}
+          issues={data?.detail_issues}
+          comparison={data?.comparison}
+          topAccuracy={data?.results?.[0]?.reliability}
+          onApply={setDetails}
+        />
+      )}
+
+      {data?.fallback_note && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{data.fallback_note}</p>
+      )}
       <ErrorBox error={error} />
       {loading ? (
         <Loading />
@@ -121,13 +147,13 @@ export default function RecommendPage({ kind }) {
         </p>
       ) : !data?.results?.length ? (
         <p className="mt-4 text-sm text-gray-500">
-          No genuinely similar cases were found. Weak matches (historically almost never judged
-          similar by legal experts) are left out rather than shown as "similar" — this corpus
-          doesn't appear to contain a strong precedent for this document.
+          No cases in this corpus share any detectable wording, statute, or citation overlap with
+          this document.
         </p>
       ) : (
         <div className="mt-4">
-          <RecommendationList results={data?.results} compareHref={compareHref} />
+          <PrecedentSummary summary={data?.precedent_summary} />
+          <RecommendationList results={data?.results} compareHref={compareHref} detailLabels={detailLabels} />
         </div>
       )}
     </div>
