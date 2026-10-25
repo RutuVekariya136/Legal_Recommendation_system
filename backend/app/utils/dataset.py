@@ -172,6 +172,21 @@ class Corpus:
         for doc_id in self.doc_ids:
             yield doc_id, self.documents[doc_id].text
 
+    @cached_property
+    def _sha1_index(self) -> dict[str, str]:
+        """{sha1(stripped text) -> doc_id}, built once. Same hashing as the bulk
+        ingest dedup (repository.bulk_insert_documents), so a byte-identical
+        upload resolves to the corpus doc it was ingested from."""
+        index: dict[str, str] = {}
+        for doc_id, text in self.iter_texts():
+            index[hashlib.sha1((text or "").strip().encode("utf-8")).hexdigest()] = doc_id
+        return index
+
+    def doc_id_by_exact_text(self, text: str) -> Optional[str]:
+        """The corpus doc_id whose raw text is byte-identical to `text`, if any."""
+        sha = hashlib.sha1((text or "").strip().encode("utf-8")).hexdigest()
+        return self._sha1_index.get(sha)
+
     # -- integrity ----------------------------------------------------------
     def check_integrity(self) -> list[str]:
         """Return a list of human-readable problems ([] == clean)."""

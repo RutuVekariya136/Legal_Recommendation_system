@@ -38,6 +38,15 @@ class _Corpus:
     def text(self, k):
         return self._d[k]._text
 
+    def doc_id_by_exact_text(self, text):
+        import hashlib
+
+        target = hashlib.sha1((text or "").strip().encode("utf-8")).hexdigest()
+        for doc_id, doc in self._d.items():
+            if hashlib.sha1(doc._text.strip().encode("utf-8")).hexdigest() == target:
+                return doc_id
+        return None
+
 
 @pytest.fixture
 def engine():
@@ -130,6 +139,21 @@ def test_recommend_for_text_uploaded_case(engine):
     assert res.query_in_corpus is False
     assert res.results[0].doc_id in {"crime_1975", "crime_2005"}
     assert res.results[0].embedding_score == 0.0  # no graph node for an upload
+
+
+def test_recommend_for_text_pins_exact_match_first(engine):
+    # "crime_2005" naturally doesn't outrank every other candidate on text
+    # alone; re-uploading its exact text must still land it at rank 1, flagged.
+    exact_text = "s. 302 of the Indian Penal Code murder witness conviction"
+    res = engine.recommend_for_text(exact_text, k=4)
+    assert res.results[0].doc_id == "crime_2005"
+    assert res.results[0].exact_match is True
+    assert all(r.exact_match is False for r in res.results[1:])
+
+
+def test_recommend_for_text_no_exact_match_flag_when_none(engine):
+    res = engine.recommend_for_text("something entirely unrelated to any case", k=2)
+    assert all(r.exact_match is False for r in res.results)
 
 
 def test_to_dict_is_json_safe(engine):

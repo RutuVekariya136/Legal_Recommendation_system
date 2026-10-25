@@ -69,6 +69,7 @@ class Recommendation:
     rationale: str
     reliability: Optional[float] = None
     reliability_n: Optional[int] = None
+    exact_match: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -257,6 +258,14 @@ class RecommendationEngine:
                            details: Optional[dict] = None,
                            detail_bonus: float = 0.0) -> RecommendationResult:
         filters = filters or Filters()
+        # If the uploaded text is byte-identical to a document already in the
+        # corpus (same judgment, possibly re-uploaded), surface that document
+        # explicitly as rank #1 rather than leaving it to the score alone -
+        # scores are real and shown unmodified, but a user who says "this is
+        # obviously the same case" shouldn't have to trust a 0.97 vs 0.99
+        # ranking to confirm it.
+        exact_lookup = getattr(self.corpus, "doc_id_by_exact_text", None)
+        exact_doc_id = exact_lookup(text) if exact_lookup is not None else None
         qfeat = extract_doc_features(text, title_index=self.title_index,
                                      hierarchy=self.hierarchy, year=year)
         text_scores = self.model.text_index.query_scores(text)
@@ -312,11 +321,27 @@ class RecommendationEngine:
             scored.append((hyb, other, t))
 
         scored.sort(key=lambda x: -x[0])
+        if exact_doc_id is not None:
+            # pin the exact match to the front if the normal filters let it
+            # through at all - never bypass an explicit year/category filter
+            # the caller asked for, just stop relying on score alone to rank
+            # it first among whatever passed those filters.
+            for i, (hyb, other, t) in enumerate(scored):
+                if other == exact_doc_id:
+                    scored.insert(0, scored.pop(i))
+                    break
+            else:
+                exact_doc_id = None  # filtered out or below min_score; nothing to pin
         results = []
         for rank, (hyb, other, t) in enumerate(scored[:k], 1):
             bd = self.model.network_index.query_breakdown(qfeat, other, embedding_score=0.0)
             doc = self.corpus[other]
             rel, rel_n = self._reliability_for(hyb)
+            is_exact = other == exact_doc_id
+            rationale = _rationale(t, bd.shared_acts, bd.shared_sections,
+                                   bd.shared_citation_doc_ids, 0, 0.0)
+            if is_exact:
+                rationale = "Exact match: this document's text is identical to an existing case in the corpus. " + rationale
             results.append(Recommendation(
                 rank=rank, doc_id=other, title=doc.title, year=doc.year,
                 hybrid_score=round(hyb, 4), text_score=round(t, 4),
@@ -324,9 +349,9 @@ class RecommendationEngine:
                 statute_overlap=bd.statute_overlap, citation_overlap=bd.citation_overlap,
                 shared_acts=bd.shared_acts, shared_sections=bd.shared_sections,
                 shared_citations=bd.shared_citation_doc_ids, cocitation_count=0,
-                rationale=_rationale(t, bd.shared_acts, bd.shared_sections,
-                                     bd.shared_citation_doc_ids, 0, 0.0),
+                rationale=rationale,
                 reliability=rel, reliability_n=rel_n,
+                exact_match=is_exact,
             ))
         return RecommendationResult(
             query="<uploaded text>", query_in_corpus=False, method=self.method, k=k,

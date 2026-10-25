@@ -23,6 +23,7 @@ function RecoCard({ item, compareHref, detailLabels }) {
               {item.title || item.doc_id}
             </Link>
             {item.year && <Badge>{item.year}</Badge>}
+            {item.exact_match && <Badge tone="purple">✓ Exact match</Badge>}
           </div>
           <p className="mt-1 text-sm text-gray-600">{item.rationale}</p>
         </div>

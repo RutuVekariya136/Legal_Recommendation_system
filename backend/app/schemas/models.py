@@ -78,6 +78,7 @@ class RecommendationItem(BaseModel):
     reliability: Optional[float] = None
     reliability_n: Optional[int] = None
     detail_matches: dict[str, bool] = {}
+    exact_match: bool = False
 
 
 class RecommendResponse(BaseModel):
