@@ -185,18 +185,6 @@ class RecommendationEngine:
     def method(self) -> str:
         return self.model.combiner.name
 
-    def _candidate_ids(self, doc_id: str) -> Optional[list[str]]:
-        """ANN candidate pool for a corpus query, or None to score everything."""
-        if not self.text_ann:
-            return None
-        pool: set[str] = set()
-        if self.text_ann.has(doc_id):
-            pool.update(n.doc_id for n in self.text_ann.most_similar(doc_id, self.candidate_pool))
-        if self.network_ann and self.network_ann.has(doc_id):
-            pool.update(n.doc_id for n in self.network_ann.most_similar(doc_id, self.candidate_pool))
-        pool.discard(doc_id)
-        return sorted(pool)
-
     # -- indexed corpus case --------------------------------------
     def recommend_for_case(self, doc_id: str, *, k: int = 10,
                            filters: Optional[Filters] = None) -> RecommendationResult:
@@ -206,7 +194,10 @@ class RecommendationEngine:
         filters.exclude_ids = set(filters.exclude_ids) | {doc_id}
 
         text_scores = self.model.text_index.scores_for(doc_id)
-        candidates = self._candidate_ids(doc_id) or self.corpus.doc_ids
+        # Score the full corpus rather than an ANN candidate pool - see the
+        # comment in recommend_for_text() for why; the same text-only-retrieval
+        # gap applies here.
+        candidates = self.corpus.doc_ids
         scored: list[tuple[float, str]] = []
         n_filtered = 0
         for other in candidates:
@@ -287,13 +278,16 @@ class RecommendationEngine:
             candidates = [d for d in self.corpus.doc_ids if needle in self.corpus.text(d).lower()]
             if min_score <= 0.0:
                 min_score = DEFAULT_CATEGORY_MIN_SCORE
-        elif self.text_ann is not None and self.model.text_index.embedder is not None:
-            from app.ml.preprocessing import preprocess_text
-
-            pp = preprocess_text(text)
-            qvec = self.model.text_index.embedder.embed_text(pp.tokens, pp.clean_text)
-            candidates = [n.doc_id for n in self.text_ann.search(qvec, self.candidate_pool)]
         else:
+            # Score every document in the corpus rather than pre-filtering to an
+            # ANN candidate pool: retrieval was previously text-only (the ANN
+            # index is built over text embeddings), so a case related only
+            # through citations/statutes - not wording - could be excluded
+            # before the network signal ever got a chance to rank it. Scoring
+            # all ~33k docs costs well under a second (text_scores is one
+            # vectorised call; the network-overlap loop is ~0.2s), so there is
+            # no real reason to pre-filter when no category/phrase filter is
+            # already narrowing the search.
             candidates = self.corpus.doc_ids
 
         scored: list[tuple[float, str, float]] = []

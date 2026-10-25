@@ -119,15 +119,19 @@ def test_unknown_case_raises(engine):
         engine.recommend_for_case("nope")
 
 
-def test_ann_candidate_pool_matches_brute_force_top_results(engine):
+def test_recommend_for_case_ignores_ann_and_scores_full_corpus(engine):
+    # Retrieval must not be text-only: even with ANN indexes attached and a
+    # tiny candidate_pool configured, recommend_for_case scores every corpus
+    # document, not just an ANN-narrowed pool - a case related only through
+    # citations/statutes (not wording) must still be reachable.
     from app.ml.vector_index import build_from_index
 
     engine.text_ann = build_from_index(engine.model.text_index, backend="numpy")
     engine.network_ann = build_from_index(engine.model.network_index.embeddings, backend="numpy")
-    engine.candidate_pool = 3
+    engine.candidate_pool = 1  # deliberately tiny - must be ignored entirely
     res = engine.recommend_for_case("tax_1980", k=2)
-    assert res.results[0].doc_id == "tax_1995"           # same top result
-    assert res.n_candidates <= 3                          # pool, not the whole corpus
+    assert res.results[0].doc_id == "tax_1995"            # same top result
+    assert res.n_candidates == 3                          # all other corpus docs scored
 
 
 # -- recommend_for_text ----------------------------------------
