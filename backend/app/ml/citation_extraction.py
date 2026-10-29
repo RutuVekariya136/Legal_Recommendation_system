@@ -389,6 +389,18 @@ class CitationEdge:
     score: float
     mentions: int = 1
     examples: list[str] = field(default_factory=list)
+    context: str = ""
+
+
+_CONTEXT_WIDTH = 90
+
+
+def _snippet_at(text: str, start: int, end: int, width: int = _CONTEXT_WIDTH) -> str:
+    """Like case_parameters._snippet, but around a (start, end) span rather
+    than a re.Match - wider, so treatment phrases near (not just adjacent to)
+    the citation ("...is no longer good law.") are captured."""
+    s, e = max(0, start - width), min(len(text), end + width)
+    return ("..." if s else "") + " ".join(text[s:e].split()) + ("..." if e < len(text) else "")
 
 
 def build_citation_edges(
@@ -408,7 +420,8 @@ def build_citation_edges(
 
     for src in corpus.doc_ids:
         src_year = corpus[src].year
-        mentions = extract_case_citations(corpus.text(src))
+        src_text = corpus.text(src)
+        mentions = extract_case_citations(src_text)
         for cit in mentions:
             r = index.resolve(
                 cit, exclude_doc_id=src, min_score=min_score, not_after_year=src_year
@@ -418,12 +431,17 @@ def build_citation_edges(
             key = (src, r.to_doc_id)
             edge = edges.get(key)
             if edge is None:
+                context = (
+                    _snippet_at(src_text, cit.char_offset, cit.char_offset + len(cit.raw))
+                    if cit.char_offset >= 0 else ""
+                )
                 edges[key] = CitationEdge(
                     src_doc_id=src,
                     dst_doc_id=r.to_doc_id,
                     score=r.score,
                     mentions=1,
                     examples=[cit.raw],
+                    context=context,
                 )
             else:
                 edge.mentions += 1

@@ -57,6 +57,31 @@ class CaseListResponse(BaseModel):
     items: list[CaseSummary]
 
 
+# -- citation treatment ("is this case still good law?") --------
+
+TREATMENT_COVERAGE_NOTE = (
+    "Based only on citations we could automatically resolve to a document in "
+    "this corpus (about 1.2% of raw citation mentions). No warning shown does "
+    "not confirm this case is still good law - it may simply mean no later "
+    "citing case was resolved."
+)
+
+
+class TreatmentSignal(BaseModel):
+    citing_doc_id: str
+    citing_year: Optional[int] = None
+    status: str
+    context: str
+
+
+class TreatmentSummaryResponse(BaseModel):
+    doc_id: str
+    overall_status: str
+    signals: list[TreatmentSignal] = []
+    n_resolved_citations_checked: int = 0
+    coverage_note: str = TREATMENT_COVERAGE_NOTE
+
+
 # -- recommend -------------------------------------------------
 
 class RecommendationItem(BaseModel):
@@ -79,6 +104,7 @@ class RecommendationItem(BaseModel):
     reliability_n: Optional[int] = None
     detail_matches: dict[str, bool] = {}
     exact_match: bool = False
+    treatment_status: Optional[str] = None
 
 
 class RecommendResponse(BaseModel):

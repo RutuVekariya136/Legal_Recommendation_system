@@ -70,6 +70,7 @@ class Recommendation:
     reliability: Optional[float] = None
     reliability_n: Optional[int] = None
     exact_match: bool = False
+    treatment_status: Optional[str] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -161,7 +162,7 @@ class RecommendationEngine:
     def __init__(self, corpus, hybrid_model: HybridSimilarityModel, *,
                  title_index: Optional[CorpusTitleIndex] = None, hierarchy=None,
                  text_ann=None, network_ann=None, candidate_pool: int = 300,
-                 reliability=None):
+                 reliability=None, treatment_index=None):
         self.corpus = corpus
         self.model = hybrid_model
         self.hierarchy = hierarchy or load_hierarchy()
@@ -175,6 +176,17 @@ class RecommendationEngine:
         # score to "of past expert-scored pairs the model rated near this
         # level, what fraction were actually judged similar" - see EVALUATION.md.
         self.reliability = reliability
+        # Optional {doc_id: TreatmentSummary} (app.ml.case_treatment), built
+        # fresh from the citation edges at service startup. Absence of an
+        # entry means "no data", never "confirmed still good law".
+        self.treatment_index = treatment_index or {}
+
+    def _treatment_status_for(self, doc_id: str) -> Optional[str]:
+        """Only surface statuses worth a user's attention on a result card."""
+        summary = self.treatment_index.get(doc_id)
+        if summary is not None and summary.overall_status in ("negative", "distinguished"):
+            return summary.overall_status
+        return None
 
     def _reliability_for(self, score: float) -> tuple[Optional[float], Optional[int]]:
         if self.reliability is None:
@@ -239,6 +251,7 @@ class RecommendationEngine:
                                  bd.shared_citation_doc_ids, bd.cocitation_count,
                                  bd.embedding_score),
             reliability=rel, reliability_n=rel_n,
+            treatment_status=self._treatment_status_for(target),
         )
 
     # -- uploaded / ad-hoc text ---------------------------------
@@ -346,6 +359,7 @@ class RecommendationEngine:
                 rationale=rationale,
                 reliability=rel, reliability_n=rel_n,
                 exact_match=is_exact,
+                treatment_status=self._treatment_status_for(other),
             ))
         return RecommendationResult(
             query="<uploaded text>", query_in_corpus=False, method=self.method, k=k,

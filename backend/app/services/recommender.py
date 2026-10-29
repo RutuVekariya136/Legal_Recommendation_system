@@ -13,6 +13,8 @@ from functools import lru_cache
 from typing import Optional
 
 from app.config import get_settings
+from app.ml.case_treatment import TreatmentSummary, build_treatment_index
+from app.ml.citation_extraction import build_citation_edges
 from app.ml.evaluation import ReliabilityCalibrator
 from app.ml.explainability import Explainer
 from app.ml.hybrid_similarity import HybridSimilarityModel, LearnedCombiner, make_combiner
@@ -109,8 +111,14 @@ class RecommenderService:
         cal_path = hdir / "calibration.joblib"
         reliability = ReliabilityCalibrator.load(cal_path) if cal_path.is_file() else None
 
+        # Citation-treatment signal ("is this case still good law?"). Cheap to
+        # compute fresh at startup (only the resolved edges, ~1.2% of raw
+        # mentions) rather than coupling to the persisted graph JSON.
+        citation_edges = build_citation_edges(corpus, min_score=90)
+        treatment_index = build_treatment_index(citation_edges, corpus=corpus)
+
         engine = RecommendationEngine(corpus, hybrid, text_ann=text_ann, network_ann=net_ann,
-                                      reliability=reliability)
+                                      reliability=reliability, treatment_index=treatment_index)
         explainer = Explainer(corpus, hybrid, title_index=engine.title_index,
                               reliability=reliability)
         meta = ServiceMeta(
@@ -146,6 +154,9 @@ class RecommenderService:
 
     def explain_pair(self, a: str, b: str):
         return self.explainer.explain_pair(a, b)
+
+    def treatment_for(self, doc_id: str) -> Optional[TreatmentSummary]:
+        return self.engine.treatment_index.get(doc_id)
 
     # -- search --------------------------------------------------
     def search(self, query: str, *, mode: str = "semantic", year_min: Optional[int] = None,

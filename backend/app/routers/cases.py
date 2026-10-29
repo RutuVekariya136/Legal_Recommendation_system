@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.models import CaseDetail, CaseListResponse, CaseSummary
+from app.schemas.models import CaseDetail, CaseListResponse, CaseSummary, TreatmentSummaryResponse
 from app.services import repository as repo
 from app.services.recommender import RecommenderService, get_service
 
@@ -49,3 +49,18 @@ def get_case_text(doc_id: str, svc: RecommenderService = Depends(get_service)) -
     if doc_id not in svc.corpus:
         raise HTTPException(404, f"case {doc_id!r} not found")
     return {"doc_id": doc_id, "text": svc.corpus.text(doc_id)}
+
+
+@router.get("/{doc_id}/treatment", response_model=TreatmentSummaryResponse)
+def get_case_treatment(doc_id: str, svc: RecommenderService = Depends(get_service)) -> TreatmentSummaryResponse:
+    if doc_id not in svc.corpus:
+        raise HTTPException(404, f"case {doc_id!r} not found")
+    summary = svc.treatment_for(doc_id)
+    if summary is None:
+        return TreatmentSummaryResponse(doc_id=doc_id, overall_status="no_data")
+    return TreatmentSummaryResponse(
+        doc_id=summary.doc_id,
+        overall_status=summary.overall_status,
+        signals=[s.__dict__ for s in summary.signals],
+        n_resolved_citations_checked=summary.n_resolved_citations_checked,
+    )

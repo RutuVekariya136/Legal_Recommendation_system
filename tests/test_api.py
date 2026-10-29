@@ -134,6 +134,16 @@ def test_get_case_detail_and_text(client):
     assert client.get("/api/cases/zzz").status_code == 404
 
 
+def test_get_case_treatment_no_data_when_no_citation_edges(client):
+    # the fixture engine has no treatment_index wired up, so every case
+    # must report "no_data", never a false "clean" signal.
+    j = client.get("/api/cases/a/treatment").json()
+    assert j["overall_status"] == "no_data"
+    assert j["signals"] == []
+    assert "citations we could automatically resolve" in j["coverage_note"]
+    assert client.get("/api/cases/zzz/treatment").status_code == 404
+
+
 # -- recommend ------------------------------------------------
 
 def test_recommend_case_ranks_and_records_run(client):

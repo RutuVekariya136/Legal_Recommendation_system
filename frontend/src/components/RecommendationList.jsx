@@ -24,6 +24,9 @@ function RecoCard({ item, compareHref, detailLabels }) {
             </Link>
             {item.year && <Badge>{item.year}</Badge>}
             {item.exact_match && <Badge tone="purple">✓ Exact match</Badge>}
+            {item.treatment_status === "negative" && (
+              <Badge tone="red">⚠ Possibly overruled</Badge>
+            )}
           </div>
           <p className="mt-1 text-sm text-gray-600">{item.rationale}</p>
         </div>

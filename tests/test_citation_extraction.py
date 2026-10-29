@@ -43,6 +43,47 @@ def test_extract_rejects_generic_only_parties():
     assert extract_case_citations("the State v. it was never argued") == []
 
 
+# -- citation edge context (treatment signal input) ---------------------
+
+class _TreatmentDoc:
+    def __init__(self, doc_id, year, title, text):
+        self.doc_id, self.year, self.title, self._text = doc_id, year, title, text
+
+
+class _TreatmentCorpus:
+    def __init__(self, docs):
+        self._d = {d.doc_id: d for d in docs}
+
+    @property
+    def doc_ids(self):
+        return sorted(self._d)
+
+    def __getitem__(self, k):
+        return self._d[k]
+
+    def __contains__(self, k):
+        return k in self._d
+
+    def text(self, k):
+        return self._d[k]._text
+
+
+def test_build_citation_edges_captures_context_around_mention():
+    corpus = _TreatmentCorpus([
+        _TreatmentDoc("old_case", 1980, "Whicker v Hume", "a dispute about domicile"),
+        _TreatmentDoc(
+            "new_case", 2000, "Someone v Else",
+            "We hold that Whicker v Hume is no longer good law and is overruled.",
+        ),
+    ])
+    edges = build_citation_edges(corpus, min_score=80)
+    assert len(edges) == 1
+    edge = edges[0]
+    assert edge.src_doc_id == "new_case" and edge.dst_doc_id == "old_case"
+    assert "no longer good law" in edge.context
+    assert "overruled" in edge.context
+
+
 # -- normalisation ---------------------------------------------------
 
 @pytest.mark.parametrize(

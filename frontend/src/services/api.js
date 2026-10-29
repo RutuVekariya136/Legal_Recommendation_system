@@ -26,6 +26,7 @@ export const api = {
     unwrap(client.get("/cases", { params: { q, year_min: yearMin, year_max: yearMax, limit, offset } })),
   getCase: (docId) => unwrap(client.get(`/cases/${encodeURIComponent(docId)}`)),
   getCaseText: (docId) => unwrap(client.get(`/cases/${encodeURIComponent(docId)}/text`)),
+  getCaseTreatment: (docId) => unwrap(client.get(`/cases/${encodeURIComponent(docId)}/treatment`)),
 
   recommendCase: (docId, { k = 10, yearMin, yearMax, minScore } = {}) =>
     unwrap(
