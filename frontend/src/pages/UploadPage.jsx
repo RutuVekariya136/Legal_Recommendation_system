@@ -222,6 +222,19 @@ export default function UploadPage() {
           <p className="prose-legal mt-3 max-h-40 overflow-auto rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
             {result.preview}…
           </p>
+
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+            <p className="text-xs text-gray-500">
+              Text extracted successfully. Ready to search across 33,000+ Supreme Court cases.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate(`/recommend/upload/${result.id}`)}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500"
+            >
+              Find similar cases →
+            </button>
+          </div>
         </div>
       )}
       {result && (

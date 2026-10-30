@@ -65,7 +65,7 @@ export default function UploadParametersPanel({ uploadId, category, onContinue }
         onClick={() => onContinue(details)}
         className="mt-4 rounded-lg bg-slate-800 px-5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700"
       >
-        Find similar cases →
+        Find similar cases with details →
       </button>
     </div>
   );
