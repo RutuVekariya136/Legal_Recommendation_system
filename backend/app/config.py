@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # "files" = the 296 base-paper docs from data/raw/
     # "db"    = every Case row (base + bulk-ingested, e.g. 33k ILDC corpus)
-    corpus_source: str = "db"
+    corpus_source: str = "files"
 
     data_raw_dir: str = "data/raw"
     data_processed_dir: str = "data/processed"

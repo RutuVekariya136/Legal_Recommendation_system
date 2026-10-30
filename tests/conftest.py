@@ -5,9 +5,13 @@ Kept deliberately small for now; grows as pipeline steps land.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
+
+# Ensure tests always run against the committed evaluation corpus (data/raw/)
+os.environ["CORPUS_SOURCE"] = "files"
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
