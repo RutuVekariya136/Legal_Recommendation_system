@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const client = axios.create({ baseURL: "/api", timeout: 60000 });
+// Local dev: Vite proxies /api to the backend (see vite.config.js).
+// Production (e.g. Vercel): uses VITE_API_BASE_URL pointing to the Render backend.
+const baseURL = import.meta.env.VITE_API_BASE_URL || "/api";
+const client = axios.create({ baseURL, timeout: 60000 });
 
 function unwrap(p) {
   return p.then((r) => r.data);
