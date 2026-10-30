@@ -28,8 +28,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./legal_case_similarity.db"
 
     # "files" = the 296 base-paper docs from data/raw/
-    # "db"    = every Case row (base + bulk-ingested, e.g. ILDC)
-    corpus_source: str = "files"
+    # "db"    = every Case row (base + bulk-ingested, e.g. 33k ILDC corpus)
+    corpus_source: str = "db"
 
     data_raw_dir: str = "data/raw"
     data_processed_dir: str = "data/processed"
