@@ -120,7 +120,7 @@ parse or a section-list dump.
 ## Full run-through: ILDC on a fresh machine
 
 ```bash
-git clone https://github.com/2005Hari/Legal_Recommendation_system.git
+git clone https://github.com/RutuVekariya136/Legal_Recommendation_system.git
 cd Legal_Recommendation_system
 
 python3.12 -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate

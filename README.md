@@ -1,6 +1,6 @@
 # AI-Based Legal Case Similarity and Recommendation System
 
-[![tests](https://github.com/2005Hari/Legal_Recommendation_system/actions/workflows/ci.yml/badge.svg)](https://github.com/2005Hari/Legal_Recommendation_system/actions/workflows/ci.yml)
+[![tests](https://github.com/RutuVekariya136/Legal_Recommendation_system/actions/workflows/ci.yml/badge.svg)](https://github.com/RutuVekariya136/Legal_Recommendation_system/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10–3.12](https://img.shields.io/badge/python-3.10--3.12-blue.svg)](https://www.python.org/)
 [![Backend: FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
