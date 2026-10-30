@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     hybrid_beta: float = 0.5
     default_top_k: int = 10
 
-    cors_origins: str = "http://localhost:5173"
+    cors_origins: str = "http://localhost:5173,https://legal-recommendation-system.vercel.app"
 
     upload_max_bytes: int = 20 * 1024 * 1024  # 20 MB
 
